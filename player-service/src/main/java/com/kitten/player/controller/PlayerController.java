@@ -29,7 +29,7 @@ public class PlayerController {
   }
 
   @GetMapping("/{id}")
-  public PlayerResponse getPlayer(@PathVariable String id) {
+  public PlayerResponse getPlayer(@PathVariable("id") String id) {
     Player player = playerService.getPlayerById(id);
     if (player == null) {
       throw new RuntimeException("Player not found");
