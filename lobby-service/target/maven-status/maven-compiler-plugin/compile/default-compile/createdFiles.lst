@@ -1,1 +1,2 @@
-com\kitten\lobby\App.class
+com\kitten\lobby\model\Lobby.class
+com\kitten\lobby\service\LobbyService.class
