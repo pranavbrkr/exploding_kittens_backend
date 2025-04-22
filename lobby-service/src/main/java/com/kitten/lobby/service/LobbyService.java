@@ -16,4 +16,19 @@ public class LobbyService {
     lobbyStore.put(lobby.getLobbyId(), lobby);
     return lobby;
   }
+
+  public Lobby getLobbyById(String lobbyId) {
+    return lobbyStore.get(lobbyId);
+  }
+
+  public boolean lobbyExists(String lobbyId) {
+    return lobbyStore.containsKey(lobbyId);
+  }
+
+  public void addPlayerToLobby(String lobbyId, String playerId) {
+    Lobby lobby = lobbyStore.get(lobbyId);
+    if (lobby != null) {
+      lobby.getPlayerIds().add(playerId);
+    }
+  }
 }
