@@ -31,4 +31,9 @@ public class LobbyService {
       lobby.getPlayerIds().add(playerId);
     }
   }
+
+  public boolean isLobbyFull(String lobbyId) {
+    Lobby lobby = lobbyStore.get(lobbyId);
+    return lobby != null && lobby.getPlayerIds().size() >= 4;
+  }
 }

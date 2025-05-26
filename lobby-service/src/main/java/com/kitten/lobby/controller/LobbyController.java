@@ -73,6 +73,10 @@ public class LobbyController {
       throw new RuntimeException("Lobby not found");
     }
 
+    if (lobbyService.isLobbyFull(lobbyId)) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lobby is full");
+    }
+
     lobbyService.addPlayerToLobby(lobbyId, playerId);
     Lobby updated = lobbyService.getLobbyById(lobbyId);
 
