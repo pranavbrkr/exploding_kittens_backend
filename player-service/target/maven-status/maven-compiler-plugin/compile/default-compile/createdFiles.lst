@@ -1,6 +1,6 @@
 com\kitten\player\dto\PlayerRequest.class
-com\kitten\player\dto\PlayerResponse.class
 com\kitten\player\model\Player.class
 com\kitten\player\service\PlayerService.class
+com\kitten\player\dto\PlayerResponse.class
 com\kitten\player\controller\PlayerController.class
 com\kitten\player\PlayerServiceApplication.class
