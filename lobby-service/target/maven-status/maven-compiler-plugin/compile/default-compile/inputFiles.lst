@@ -1,5 +1,8 @@
 E:\Projects\exploding_kittens\exploding_kittens_backend\lobby-service\src\main\java\com\kitten\lobby\client\PlayerClient.java
+E:\Projects\exploding_kittens\exploding_kittens_backend\lobby-service\src\main\java\com\kitten\lobby\config\CorsConfig.java
+E:\Projects\exploding_kittens\exploding_kittens_backend\lobby-service\src\main\java\com\kitten\lobby\config\WebSocketConfig.java
 E:\Projects\exploding_kittens\exploding_kittens_backend\lobby-service\src\main\java\com\kitten\lobby\controller\LobbyController.java
+E:\Projects\exploding_kittens\exploding_kittens_backend\lobby-service\src\main\java\com\kitten\lobby\controller\LobbyWebSocketController.java
 E:\Projects\exploding_kittens\exploding_kittens_backend\lobby-service\src\main\java\com\kitten\lobby\dto\LobbyCreateRequest.java
 E:\Projects\exploding_kittens\exploding_kittens_backend\lobby-service\src\main\java\com\kitten\lobby\dto\LobbyJoinRequest.java
 E:\Projects\exploding_kittens\exploding_kittens_backend\lobby-service\src\main\java\com\kitten\lobby\dto\LobbyResponse.java
