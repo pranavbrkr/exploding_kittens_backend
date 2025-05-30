@@ -38,7 +38,8 @@ public class LobbyController {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Lobby not found");
     }
 
-    List<PlayerResponse> playerList = lobby.getPlayerIds().stream()
+    List<String> safeCopy = List.copyOf(lobby.getPlayerIds());
+    List<PlayerResponse> playerList = safeCopy.stream()
       .map(playerClient::getPlayerDetails)
       .toList();
     return new LobbyResponse(lobby.getLobbyId(), playerList);

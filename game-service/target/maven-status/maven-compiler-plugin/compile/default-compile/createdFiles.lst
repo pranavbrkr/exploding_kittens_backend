@@ -1,1 +1,7 @@
-com\kitten\game\App.class
+com\kitten\game\model\CardType.class
+com\kitten\game\model\PlayerState.class
+com\kitten\game\controller\GameController.class
+com\kitten\game\model\GameState.class
+com\kitten\game\GameServiceApplication.class
+com\kitten\game\service\GameService.class
+com\kitten\game\config\CorsConfig.class

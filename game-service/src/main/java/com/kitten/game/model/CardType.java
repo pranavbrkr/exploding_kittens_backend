@@ -1,0 +1,20 @@
+package com.kitten.game.model;
+
+public enum CardType {
+  DEFUSE,
+  ATTACK,
+  TARGETED_ATTACK,
+  SKIP,
+  SEE_THE_FUTURE,
+  ALTER_THE_FUTURE,
+  SHUFFLE,
+  FAVOR,
+  NOPE,
+  CAT_TACO,
+  CAT_WATERMELON,
+  CAT_POTATO,
+  CAT_BEARD,
+  CAT_RAINBOW,
+  CAT_FERAL,
+  EXPLODING_KITTEN
+}
