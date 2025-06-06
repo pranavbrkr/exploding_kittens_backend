@@ -1,5 +1,6 @@
 package com.kitten.game.controller;
 
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,6 +73,11 @@ public class GameController {
     if (!currentPlayer.getHand().remove(card)) return ResponseEntity.badRequest().build();
 
     game.getUsedCards().add(card);
+
+    if (card == CardType.SHUFFLE) {
+      Collections.shuffle(game.getDeck());
+      return ResponseEntity.ok().build();
+    }
 
     if (card == CardType.SKIP) {
       game.setCardsToDraw(game.getCardsToDraw() - 1);
