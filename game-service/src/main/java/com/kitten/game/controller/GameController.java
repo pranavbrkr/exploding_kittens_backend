@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.kitten.game.model.CardType;
 import com.kitten.game.model.GameState;
+import com.kitten.game.model.PlayerState;
 import com.kitten.game.service.GameService;
 
 @RestController
@@ -54,6 +56,35 @@ public class GameController {
     game.setCurrentPlayerIndex(next);
 
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", game.getPlayers().get(next).getPlayerId());
+    return ResponseEntity.ok().build();
+  }
+
+  @PostMapping("/play/{lobbyId}")
+  public ResponseEntity<Void> playCard(@PathVariable String lobbyId, @RequestParam String playerId, @RequestParam String cardType) {
+    GameState game = gameService.getGame(lobbyId);
+    if (game == null) return ResponseEntity.notFound().build();
+
+    int currentIndex = game.getCurrentPlayerIndex();
+    PlayerState currentPlayer = game.getPlayers().get(currentIndex);
+    if (!currentPlayer.getPlayerId().equals(playerId)) return ResponseEntity.status(403).build();
+
+    CardType card = CardType.valueOf(cardType);
+    if (!currentPlayer.getHand().remove(card)) return ResponseEntity.badRequest().build();
+
+    game.getUsedCards().add(card);
+
+    if (card == CardType.SKIP) {
+      game.setCardsToDraw(game.getCardsToDraw() - 1);
+    }
+
+    if (game.getCardsToDraw() <= 0) {
+      int next = (currentIndex + 1) % game.getPlayers().size();
+      game.setCurrentPlayerIndex(next);
+      game.setCardsToDraw(1);
+
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", game.getPlayers().get(next).getPlayerId());
+    }
+
     return ResponseEntity.ok().build();
   }
 

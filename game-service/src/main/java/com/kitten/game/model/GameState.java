@@ -6,7 +6,9 @@ public class GameState {
   private String lobbyId;
   private List<PlayerState> players;
   private List<CardType> deck;
+  private List<CardType> usedCards;
   private int currentPlayerIndex;
+  private int cardsToDraw;
   private boolean gameStarted;
 
   public GameState() {}
@@ -43,12 +45,28 @@ public class GameState {
     this.deck = deck;
   }
 
+  public List<CardType> getUsedCards() {
+    return usedCards;
+  }
+
+  public void setUsedCards(List<CardType> usedCards) {
+    this.usedCards = usedCards;
+  }
+
   public int getCurrentPlayerIndex() {
     return currentPlayerIndex;
   }
 
   public void setCurrentPlayerIndex(int currentPlayerIndex) {
     this.currentPlayerIndex = currentPlayerIndex;
+  }
+
+  public int getCardsToDraw() {
+    return cardsToDraw;
+  }
+
+  public void setCardsToDraw(int cardsToDraw) {
+    this.cardsToDraw = cardsToDraw;
   }
 
   public boolean isGameStarted() {
