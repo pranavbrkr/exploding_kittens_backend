@@ -8,6 +8,7 @@ public enum CardType {
   SEE_THE_FUTURE,
   ALTER_THE_FUTURE,
   SHUFFLE,
+  DRAW_FROM_BOTTOM,
   FAVOR,
   NOPE,
   CAT_TACO,

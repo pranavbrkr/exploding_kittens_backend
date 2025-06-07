@@ -30,6 +30,7 @@ public class GameService {
     deck.addAll(Collections.nCopies(3, CardType.SEE_THE_FUTURE));
     deck.addAll(Collections.nCopies(4, CardType.ALTER_THE_FUTURE));
     deck.addAll(Collections.nCopies(4, CardType.SHUFFLE));
+    deck.addAll(Collections.nCopies(4, CardType.DRAW_FROM_BOTTOM));
     deck.addAll(Collections.nCopies(4, CardType.FAVOR));
     deck.addAll(Collections.nCopies(5, CardType.NOPE));
     deck.addAll(Collections.nCopies(4, CardType.CAT_TACO));
@@ -52,6 +53,8 @@ public class GameService {
     }
 
     deck.addAll(Collections.nCopies(3, CardType.EXPLODING_KITTEN));
+    Collections.shuffle(deck);
+    Collections.shuffle(deck);
     Collections.shuffle(deck);
 
     GameState game = new GameState();
