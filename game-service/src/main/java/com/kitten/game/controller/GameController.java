@@ -96,4 +96,34 @@ public class GameController {
     return ResponseEntity.ok().build();
   }
 
+  @PostMapping("/draw/{lobbyId}")
+  public ResponseEntity<Void> drawCard(@PathVariable String lobbyId, @RequestParam String playerId) {
+    GameState game = gameService.getGame(lobbyId);
+    if (game == null) return ResponseEntity.notFound().build();
+
+    int currentIndex = game.getCurrentPlayerIndex();
+    PlayerState currentPlayer = game.getPlayers().get(currentIndex);
+
+    if(!currentPlayer.getPlayerId().equals(playerId)) {
+      return ResponseEntity.status(403).build();
+    }
+
+    if (!game.getDeck().isEmpty()) {
+      currentPlayer.getHand().add(game.getDeck().remove(0));
+      game.setCardsToDraw(game.getCardsToDraw() - 1);
+    }
+
+    if (game.getCardsToDraw() <= 0) {
+      int next = (currentIndex + 1) % game.getPlayers().size();
+      game.setCurrentPlayerIndex(next);
+      game.setCardsToDraw(1);
+
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", game.getPlayers().get(next).getPlayerId());
+    }
+
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
+
+    return ResponseEntity.ok().build();
+  }
+
 }
