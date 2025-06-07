@@ -83,6 +83,13 @@ public class GameController {
       game.setCardsToDraw(game.getCardsToDraw() - 1);
     }
 
+    if (card == CardType.DRAW_FROM_BOTTOM) {
+      if (!game.getDeck().isEmpty()) {
+        currentPlayer.getHand().add(game.getDeck().remove(game.getDeck().size() - 1));
+        game.setCardsToDraw(game.getCardsToDraw() - 1);
+      }
+    }
+
     if (game.getCardsToDraw() <= 0) {
       int next = (currentIndex + 1) % game.getPlayers().size();
       game.setCurrentPlayerIndex(next);
