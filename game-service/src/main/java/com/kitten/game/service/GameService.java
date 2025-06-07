@@ -58,7 +58,7 @@ public class GameService {
     game.setLobbyId(lobbyId);
     game.setPlayers(players);
     game.setDeck(deck);
-    game.setUsedCards(new ArrayList<>());
+    // game.setUsedCards(new ArrayList<>());
     game.setCardsToDraw(1);
     game.setGameStarted(true);
     game.setCurrentPlayerIndex(0);

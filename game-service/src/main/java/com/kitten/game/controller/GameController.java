@@ -91,6 +91,8 @@ public class GameController {
       messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", game.getPlayers().get(next).getPlayerId());
     }
 
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", game);
+
     return ResponseEntity.ok().build();
   }
 

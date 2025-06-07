@@ -1,12 +1,13 @@
 package com.kitten.game.model;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class GameState {
   private String lobbyId;
   private List<PlayerState> players;
   private List<CardType> deck;
-  private List<CardType> usedCards;
+  private List<CardType> usedCards = new ArrayList<>();
   private int currentPlayerIndex;
   private int cardsToDraw;
   private boolean gameStarted;
