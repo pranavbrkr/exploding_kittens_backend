@@ -85,8 +85,10 @@ public class GameController {
 
     if (card == CardType.DRAW_FROM_BOTTOM) {
       if (!game.getDeck().isEmpty()) {
-        currentPlayer.getHand().add(game.getDeck().remove(game.getDeck().size() - 1));
-        game.setCardsToDraw(game.getCardsToDraw() - 1);
+        CardType drawnCard = game.getDeck().remove(game.getDeck().size() - 1);
+        gameService.handleDrawnCard(drawnCard, currentPlayer, game);
+        // currentPlayer.getHand().add(game.getDeck().remove(game.getDeck().size() - 1));
+        // game.setCardsToDraw(game.getCardsToDraw() - 1);
       }
     }
 
@@ -116,8 +118,10 @@ public class GameController {
     }
 
     if (!game.getDeck().isEmpty()) {
-      currentPlayer.getHand().add(game.getDeck().remove(0));
-      game.setCardsToDraw(game.getCardsToDraw() - 1);
+      CardType drawnCard = game.getDeck().remove(0);
+      gameService.handleDrawnCard(drawnCard, currentPlayer, game);
+      // currentPlayer.getHand().add(game.getDeck().remove(0));
+      // game.setCardsToDraw(game.getCardsToDraw() - 1);
     }
 
     if (game.getCardsToDraw() <= 0) {

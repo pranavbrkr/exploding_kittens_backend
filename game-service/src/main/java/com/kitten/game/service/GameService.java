@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import org.springframework.stereotype.Service;
 
@@ -72,6 +73,24 @@ public class GameService {
 
   public GameState getGame(String lobbyId) {
     return gameStore.get(lobbyId);
+  }
+
+  public void handleDrawnCard(CardType drawnCard, PlayerState player, GameState game) {
+    if (drawnCard == CardType.EXPLODING_KITTEN) {
+      game.setCardsToDraw(game.getCardsToDraw() - 1);
+
+      if (player.getHand().remove(CardType.DEFUSE)) {
+        game.getUsedCards().add(CardType.DEFUSE);
+
+        int pos = new Random().nextInt(game.getDeck().size() + 1);
+        game.getDeck().add(pos, CardType.EXPLODING_KITTEN);
+      } else {
+        System.out.println(player.getPlayerId() + " eliminated");
+      }
+    } else {
+      player.getHand().add(drawnCard);
+      game.setCardsToDraw(game.getCardsToDraw() - 1);
+    }
   }
 
 }
