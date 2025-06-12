@@ -6,6 +6,7 @@ import java.util.List;
 public class GameState {
   private String lobbyId;
   private List<PlayerState> players;
+  private List<String> eliminatedPlayers = new ArrayList<>();
   private List<CardType> deck;
   private List<CardType> usedCards = new ArrayList<>();
   private int currentPlayerIndex;
@@ -36,6 +37,10 @@ public class GameState {
 
   public void setPlayers(List<PlayerState> players) {
     this.players = players;
+  }
+
+  public List<String> getEliminatedPlayers() {
+    return eliminatedPlayers;
   }
 
   public List<CardType> getDeck() {

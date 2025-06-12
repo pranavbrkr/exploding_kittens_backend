@@ -81,11 +81,19 @@ public class GameService {
 
       if (player.getHand().remove(CardType.DEFUSE)) {
         game.getUsedCards().add(CardType.DEFUSE);
-
         int pos = new Random().nextInt(game.getDeck().size() + 1);
         game.getDeck().add(pos, CardType.EXPLODING_KITTEN);
       } else {
-        System.out.println(player.getPlayerId() + " eliminated");
+        game.getPlayers().remove(player);
+        game.getEliminatedPlayers().add(player.getPlayerId());
+        if (game.getCurrentPlayerIndex() >= game.getPlayers().size()) {
+          //
+          //
+          // Todo: Look at the turn change when the player is eliminated
+          //
+          //
+          game.setCurrentPlayerIndex(0);
+        }
       }
     } else {
       player.getHand().add(drawnCard);
