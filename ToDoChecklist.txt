@@ -1,4 +1,3 @@
-- See the future
 - Activity log
 - Turn over after player elimination
 - Alter the future

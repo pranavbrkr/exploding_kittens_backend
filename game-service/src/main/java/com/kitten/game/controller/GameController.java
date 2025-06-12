@@ -83,6 +83,13 @@ public class GameController {
       game.setCardsToDraw(game.getCardsToDraw() - 1);
     }
 
+    if (card == CardType.SEE_THE_FUTURE) {
+      int end = Math.min(3, game.getDeck().size());
+      List<CardType> topCards = game.getDeck().subList(0, end);
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/future/" + playerId, topCards);
+      return ResponseEntity.ok().build();
+    }
+
     if (card == CardType.DRAW_FROM_BOTTOM) {
       if (!game.getDeck().isEmpty()) {
         CardType drawnCard = game.getDeck().remove(game.getDeck().size() - 1);
