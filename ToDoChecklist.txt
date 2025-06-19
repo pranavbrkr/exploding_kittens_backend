@@ -1,5 +1,5 @@
-- Activity log
-- Turn over after player elimination
-- Alter the future
 - Favor
+- Activity log
 - Cat combinations
+- Turn over after player elimination
+- Alter the future (Fix the dnd glitch)
