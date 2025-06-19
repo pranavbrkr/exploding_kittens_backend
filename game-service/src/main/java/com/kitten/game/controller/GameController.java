@@ -90,6 +90,13 @@ public class GameController {
       return ResponseEntity.ok().build();
     }
 
+    if (card == CardType.ALTER_THE_FUTURE) {
+      int end = Math.min(3, game.getDeck().size());
+      List<CardType> topCards = game.getDeck().subList(0, end);
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/alter/" + playerId, topCards);
+      return ResponseEntity.ok().build();
+    }
+
     if (card == CardType.DRAW_FROM_BOTTOM) {
       if (!game.getDeck().isEmpty()) {
         CardType drawnCard = game.getDeck().remove(game.getDeck().size() - 1);
@@ -141,6 +148,20 @@ public class GameController {
 
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
 
+    return ResponseEntity.ok().build();
+  }
+
+  @PostMapping("/alter/{lobbyId}")
+  public ResponseEntity<Void> reorderFuture(@PathVariable String lobbyId, @RequestBody List<CardType> reorderedCards, @RequestParam String playerId) {
+    GameState game = gameService.getGame(lobbyId);
+    if (game == null) return ResponseEntity.notFound().build();
+
+    List<CardType> deck = game.getDeck();
+    for (int i = 0; i < reorderedCards.size(); i++) {
+      deck.set(i, reorderedCards.get(i));
+    }
+
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
     return ResponseEntity.ok().build();
   }
 
