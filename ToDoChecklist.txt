@@ -1,5 +1,6 @@
 - Favor
 - Activity log
+- Nope card (Instead of play, button when attacked or favor would be better option)
 - Cat combinations
 - Turn over after player elimination
 - Alter the future (Fix the dnd glitch)
