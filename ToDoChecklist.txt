@@ -1,5 +1,5 @@
-- Favor
 - Activity log
+- Attacks
 - Nope card (Instead of play, button when attacked or favor would be better option)
 - Cat combinations
 - Turn over after player elimination
