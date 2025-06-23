@@ -12,6 +12,7 @@ public class GameState {
   private int currentPlayerIndex;
   private int cardsToDraw;
   private boolean gameStarted;
+  private String favorFromPlayerId;
 
   public GameState() {}
 
@@ -81,6 +82,14 @@ public class GameState {
 
   public void setGameStarted(boolean gameStarted) {
     this.gameStarted = gameStarted;
+  }
+
+  public String getFavorFromPlayerId() {
+    return favorFromPlayerId;
+  }
+
+  public void setFavorFromPlayerId(String favorFromPlayerId) {
+    this.favorFromPlayerId = favorFromPlayerId;
   }
 
 }

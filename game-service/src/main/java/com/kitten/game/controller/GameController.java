@@ -106,6 +106,15 @@ public class GameController {
       }
     }
 
+    if (card == CardType.FAVOR) {
+      game.setFavorFromPlayerId(playerId); // Set who played Favor
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/favor/select/" + playerId, game.getPlayers().stream()
+        .map(PlayerState::getPlayerId)
+        .filter(pid -> !pid.equals(playerId))
+        .toList());
+      return ResponseEntity.ok().build();
+    }
+
     if (game.getCardsToDraw() <= 0) {
       int next = (currentIndex + 1) % game.getPlayers().size();
       game.setCurrentPlayerIndex(next);
@@ -119,6 +128,33 @@ public class GameController {
     return ResponseEntity.ok().build();
   }
 
+@PostMapping("/favor/response/{lobbyId}")
+public ResponseEntity<Void> handleFavorResponse(@PathVariable String lobbyId, @RequestParam String fromPlayerId, @RequestParam String toPlayerId, @RequestParam String givenCard) {
+  GameState game = gameService.getGame(lobbyId);
+  if (game == null) return ResponseEntity.notFound().build();
+
+  CardType card = CardType.valueOf(givenCard);
+
+  PlayerState fromPlayer = game.getPlayers().stream()
+    .filter(p -> p.getPlayerId().equals(fromPlayerId)).findFirst().orElse(null);
+  PlayerState toPlayer = game.getPlayers().stream()
+    .filter(p -> p.getPlayerId().equals(toPlayerId)).findFirst().orElse(null);
+
+  if (fromPlayer == null || toPlayer == null || !fromPlayer.getHand().remove(card)) {
+    return ResponseEntity.badRequest().build();
+  }
+
+  toPlayer.getHand().add(card);
+  messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
+  return ResponseEntity.ok().build();
+}
+
+
+@PostMapping("/favor/request/{lobbyId}")
+public ResponseEntity<Void> favorRequest(@PathVariable String lobbyId, @RequestParam String fromPlayerId, @RequestParam String toPlayerId) {
+  messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/favor/request/" + toPlayerId, fromPlayerId);
+  return ResponseEntity.ok().build();
+}
   @PostMapping("/draw/{lobbyId}")
   public ResponseEntity<Void> drawCard(@PathVariable String lobbyId, @RequestParam String playerId) {
     GameState game = gameService.getGame(lobbyId);
