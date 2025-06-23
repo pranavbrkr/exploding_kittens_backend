@@ -64,6 +64,7 @@ public class GameController {
   public ResponseEntity<Void> playCard(@PathVariable String lobbyId, @RequestParam String playerId, @RequestParam String cardType) {
     GameState game = gameService.getGame(lobbyId);
     if (game == null) return ResponseEntity.notFound().build();
+    boolean endTurnEarly = false;
 
     int currentIndex = game.getCurrentPlayerIndex();
     PlayerState currentPlayer = game.getPlayers().get(currentIndex);
@@ -100,7 +101,7 @@ public class GameController {
     if (card == CardType.DRAW_FROM_BOTTOM) {
       if (!game.getDeck().isEmpty()) {
         CardType drawnCard = game.getDeck().remove(game.getDeck().size() - 1);
-        gameService.handleDrawnCard(drawnCard, currentPlayer, game);
+        endTurnEarly = gameService.handleDrawnCard(drawnCard, currentPlayer, game);
         // currentPlayer.getHand().add(game.getDeck().remove(game.getDeck().size() - 1));
         // game.setCardsToDraw(game.getCardsToDraw() - 1);
       }
@@ -115,7 +116,18 @@ public class GameController {
       return ResponseEntity.ok().build();
     }
 
-    if (game.getCardsToDraw() <= 0) {
+    if (card == CardType.ATTACK) {
+      int next = (currentIndex + 1) % game.getPlayers().size();
+      game.setCurrentPlayerIndex(next);
+      game.setCardsToDraw(game.getCardsToDraw() + 2); // 2 from attack + 1 normal = 3
+
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", game.getPlayers().get(next).getPlayerId());
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
+
+      return ResponseEntity.ok().build();
+    }
+
+    if (endTurnEarly || game.getCardsToDraw() <= 0) {
       int next = (currentIndex + 1) % game.getPlayers().size();
       game.setCurrentPlayerIndex(next);
       game.setCardsToDraw(1);
@@ -128,37 +140,39 @@ public class GameController {
     return ResponseEntity.ok().build();
   }
 
-@PostMapping("/favor/response/{lobbyId}")
-public ResponseEntity<Void> handleFavorResponse(@PathVariable String lobbyId, @RequestParam String fromPlayerId, @RequestParam String toPlayerId, @RequestParam String givenCard) {
-  GameState game = gameService.getGame(lobbyId);
-  if (game == null) return ResponseEntity.notFound().build();
+  @PostMapping("/favor/response/{lobbyId}")
+  public ResponseEntity<Void> handleFavorResponse(@PathVariable String lobbyId, @RequestParam String fromPlayerId, @RequestParam String toPlayerId, @RequestParam String givenCard) {
+    GameState game = gameService.getGame(lobbyId);
+    if (game == null) return ResponseEntity.notFound().build();
 
-  CardType card = CardType.valueOf(givenCard);
+    CardType card = CardType.valueOf(givenCard);
 
-  PlayerState fromPlayer = game.getPlayers().stream()
-    .filter(p -> p.getPlayerId().equals(fromPlayerId)).findFirst().orElse(null);
-  PlayerState toPlayer = game.getPlayers().stream()
-    .filter(p -> p.getPlayerId().equals(toPlayerId)).findFirst().orElse(null);
+    PlayerState fromPlayer = game.getPlayers().stream()
+      .filter(p -> p.getPlayerId().equals(fromPlayerId)).findFirst().orElse(null);
+    PlayerState toPlayer = game.getPlayers().stream()
+      .filter(p -> p.getPlayerId().equals(toPlayerId)).findFirst().orElse(null);
 
-  if (fromPlayer == null || toPlayer == null || !fromPlayer.getHand().remove(card)) {
-    return ResponseEntity.badRequest().build();
+    if (fromPlayer == null || toPlayer == null || !fromPlayer.getHand().remove(card)) {
+      return ResponseEntity.badRequest().build();
+    }
+
+    toPlayer.getHand().add(card);
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
+    return ResponseEntity.ok().build();
   }
 
-  toPlayer.getHand().add(card);
-  messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
-  return ResponseEntity.ok().build();
-}
 
+  @PostMapping("/favor/request/{lobbyId}")
+  public ResponseEntity<Void> favorRequest(@PathVariable String lobbyId, @RequestParam String fromPlayerId, @RequestParam String toPlayerId) {
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/favor/request/" + toPlayerId, fromPlayerId);
+    return ResponseEntity.ok().build();
+  }
 
-@PostMapping("/favor/request/{lobbyId}")
-public ResponseEntity<Void> favorRequest(@PathVariable String lobbyId, @RequestParam String fromPlayerId, @RequestParam String toPlayerId) {
-  messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/favor/request/" + toPlayerId, fromPlayerId);
-  return ResponseEntity.ok().build();
-}
   @PostMapping("/draw/{lobbyId}")
   public ResponseEntity<Void> drawCard(@PathVariable String lobbyId, @RequestParam String playerId) {
     GameState game = gameService.getGame(lobbyId);
     if (game == null) return ResponseEntity.notFound().build();
+    boolean endTurnEarly = false;
 
     int currentIndex = game.getCurrentPlayerIndex();
     PlayerState currentPlayer = game.getPlayers().get(currentIndex);
@@ -169,12 +183,12 @@ public ResponseEntity<Void> favorRequest(@PathVariable String lobbyId, @RequestP
 
     if (!game.getDeck().isEmpty()) {
       CardType drawnCard = game.getDeck().remove(0);
-      gameService.handleDrawnCard(drawnCard, currentPlayer, game);
+      endTurnEarly = gameService.handleDrawnCard(drawnCard, currentPlayer, game);
       // currentPlayer.getHand().add(game.getDeck().remove(0));
       // game.setCardsToDraw(game.getCardsToDraw() - 1);
     }
 
-    if (game.getCardsToDraw() <= 0) {
+    if (endTurnEarly || game.getCardsToDraw() <= 0) {
       int next = (currentIndex + 1) % game.getPlayers().size();
       game.setCurrentPlayerIndex(next);
       game.setCardsToDraw(1);

@@ -75,7 +75,7 @@ public class GameService {
     return gameStore.get(lobbyId);
   }
 
-  public void handleDrawnCard(CardType drawnCard, PlayerState player, GameState game) {
+  public boolean handleDrawnCard(CardType drawnCard, PlayerState player, GameState game) {
     if (drawnCard == CardType.EXPLODING_KITTEN) {
       game.setCardsToDraw(game.getCardsToDraw() - 1);
 
@@ -83,6 +83,8 @@ public class GameService {
         game.getUsedCards().add(CardType.DEFUSE);
         int pos = new Random().nextInt(game.getDeck().size() + 1);
         game.getDeck().add(pos, CardType.EXPLODING_KITTEN);
+        game.setCardsToDraw(0);
+        return true;
       } else {
         game.getPlayers().remove(player);
         game.getEliminatedPlayers().add(player.getPlayerId());
@@ -94,11 +96,15 @@ public class GameService {
           //
           game.setCurrentPlayerIndex(0);
         }
+        game.setCardsToDraw(0);
+        return true;
       }
     } else {
       player.getHand().add(drawnCard);
       game.setCardsToDraw(game.getCardsToDraw() - 1);
     }
+
+    return false;
   }
 
 }
