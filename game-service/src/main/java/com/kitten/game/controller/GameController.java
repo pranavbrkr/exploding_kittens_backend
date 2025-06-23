@@ -127,6 +127,16 @@ public class GameController {
       return ResponseEntity.ok().build();
     }
 
+    if (card == CardType.TARGETED_ATTACK) {
+      List<String> targets = game.getPlayers().stream()
+          .map(PlayerState::getPlayerId)
+          .filter(pid -> !pid.equals(playerId))
+          .toList();
+
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/targeted/select/" + playerId, targets);
+      return ResponseEntity.ok().build();
+    }
+
     if (endTurnEarly || game.getCardsToDraw() <= 0) {
       int next = (currentIndex + 1) % game.getPlayers().size();
       game.setCurrentPlayerIndex(next);
@@ -136,6 +146,36 @@ public class GameController {
     }
 
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", game);
+
+    return ResponseEntity.ok().build();
+  }
+
+  @PostMapping("/targeted/confirm/{lobbyId}")
+  public ResponseEntity<Void> confirmTargetedAttack(
+      @PathVariable String lobbyId,
+      @RequestParam String fromPlayerId,
+      @RequestParam String toPlayerId) {
+      
+    GameState game = gameService.getGame(lobbyId);
+    if (game == null) return ResponseEntity.notFound().build();
+
+    game.setTargetedAttackTargetId(toPlayerId);
+    game.setCardsToDraw(game.getCardsToDraw() + 2); // 2 attack + 1 normal
+
+    // Update turn to the target
+    int targetIndex = -1;
+    for (int i = 0; i < game.getPlayers().size(); i++) {
+      if (game.getPlayers().get(i).getPlayerId().equals(toPlayerId)) {
+        targetIndex = i;
+        break;
+      }
+    }
+
+    if (targetIndex == -1) return ResponseEntity.badRequest().build();
+    game.setCurrentPlayerIndex(targetIndex);
+
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", toPlayerId);
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
 
     return ResponseEntity.ok().build();
   }

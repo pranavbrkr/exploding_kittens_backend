@@ -1,7 +1,7 @@
-- Targetted attack
 - Cat combinations
 - Activity log
 - Turn over after player elimination
 - Alter the future (Fix the dnd glitch)
+- favor and attack modal beautify
 - Nope card (Instead of play, button when attacked or favor would be better option)
 - attack stacks

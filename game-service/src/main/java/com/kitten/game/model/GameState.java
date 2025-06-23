@@ -13,6 +13,7 @@ public class GameState {
   private int cardsToDraw;
   private boolean gameStarted;
   private String favorFromPlayerId;
+  private String targetedAttackTargetId;
 
   public GameState() {}
 
@@ -92,4 +93,11 @@ public class GameState {
     this.favorFromPlayerId = favorFromPlayerId;
   }
 
+  public String getTargetedAttackTargetId() {
+    return targetedAttackTargetId;
+  }
+
+  public void setTargetedAttackTargetId(String targetedAttackTargetId) {
+    this.targetedAttackTargetId = targetedAttackTargetId;
+  }
 }
