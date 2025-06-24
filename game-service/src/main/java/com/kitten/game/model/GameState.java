@@ -14,6 +14,8 @@ public class GameState {
   private boolean gameStarted;
   private String favorFromPlayerId;
   private String targetedAttackTargetId;
+  private String pendingStealFromPlayerId;
+  private List<CardType> selectedCatCards = new ArrayList<>();
 
   public GameState() {}
 
@@ -97,7 +99,25 @@ public class GameState {
     return targetedAttackTargetId;
   }
 
+  public void setPendingStealFromPlayerId(String pendingStealFromPlayerId) {
+    this.pendingStealFromPlayerId = pendingStealFromPlayerId;
+  }
+
+  public String getPendingStealFromPlayerId() {
+    return pendingStealFromPlayerId;
+  }
+
   public void setTargetedAttackTargetId(String targetedAttackTargetId) {
     this.targetedAttackTargetId = targetedAttackTargetId;
   }
+
+
+  public List<CardType> getSelectedCatCards() {
+    return selectedCatCards;
+  }
+
+  public void setSelectedCatCards(List<CardType> selectedCatCards) {
+    this.selectedCatCards = selectedCatCards;
+  }
+
 }

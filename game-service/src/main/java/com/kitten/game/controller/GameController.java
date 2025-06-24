@@ -1,7 +1,10 @@
 package com.kitten.game.controller;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -207,6 +210,143 @@ public class GameController {
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/favor/request/" + toPlayerId, fromPlayerId);
     return ResponseEntity.ok().build();
   }
+
+
+  @PostMapping("/cat-combo/{lobbyId}")
+  public ResponseEntity<Void> handleCatCombo(@PathVariable String lobbyId, @RequestParam String playerId, @RequestBody List<CardType> cats) {
+    GameState game = gameService.getGame(lobbyId);
+    if (game == null || cats.size() != 2 || !cats.get(0).equals(cats.get(1))) return ResponseEntity.badRequest().build();
+
+    PlayerState player = game.getPlayers().stream()
+        .filter(p -> p.getPlayerId().equals(playerId)).findFirst().orElse(null);
+    if (player == null) return ResponseEntity.notFound().build();
+
+    // Remove cat cards from hand
+    if (!player.getHand().remove(cats.get(0)) || !player.getHand().remove(cats.get(1))) {
+        return ResponseEntity.badRequest().build();
+    }
+
+    game.setSelectedCatCards(cats);
+
+    // Notify frontend to select opponent
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/cat/select-opponent/" + playerId,
+        game.getPlayers().stream()
+            .map(PlayerState::getPlayerId)
+            .filter(pid -> !pid.equals(playerId))
+            .toList());
+
+    return ResponseEntity.ok().build();
+  }
+
+  @GetMapping("/cat/opponents/{lobbyId}")
+  public ResponseEntity<List<String>> getValidStealTargets(@PathVariable String lobbyId, @RequestParam String playerId) {
+    GameState game = gameService.getGame(lobbyId);
+    if (game == null) return ResponseEntity.notFound().build();
+
+    List<String> targets = game.getPlayers().stream()
+        .filter(p -> !p.getPlayerId().equals(playerId)
+            && !game.getEliminatedPlayers().contains(p.getPlayerId()))
+        .map(PlayerState::getPlayerId)
+        .collect(Collectors.toList());
+
+    return ResponseEntity.ok(targets);
+  }
+
+
+  @PostMapping("/cat/steal/{lobbyId}")
+  public ResponseEntity<Void> handleCatStealTarget(@PathVariable String lobbyId, @RequestParam String fromPlayerId, @RequestParam String toPlayerId) {
+    GameState game = gameService.getGame(lobbyId);
+    if (game == null) return ResponseEntity.notFound().build();
+
+    PlayerState target = game.getPlayers().stream()
+        .filter(p -> p.getPlayerId().equals(toPlayerId)).findFirst().orElse(null);
+
+    if (target == null || target.getHand().isEmpty()) {
+        return ResponseEntity.badRequest().build();
+    }
+
+    List<CardType> shuffledHand = new ArrayList<>(target.getHand());
+    Collections.shuffle(shuffledHand);
+
+    List<Integer> indices = new ArrayList<>();
+    for (int i = 1; i <= shuffledHand.size(); i++) {
+        indices.add(i); // Show numbered options
+    }
+
+    // Send to frontend with count of options (1..N)
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/cat/select-number/" + fromPlayerId,
+        indices);
+
+    // Store mapping for future lookup
+    game.setPendingStealFromPlayerId(toPlayerId);
+    game.setSelectedCatCards(shuffledHand); // reuse to store randomized view
+
+    return ResponseEntity.ok().build();
+  }
+
+
+  @PostMapping("/cat/steal/resolve/{lobbyId}")
+  public ResponseEntity<Void> resolveSteal(@PathVariable String lobbyId, @RequestParam String stealerId, @RequestParam int selectedIndex) {
+    GameState game = gameService.getGame(lobbyId);
+    if (game == null) return ResponseEntity.notFound().build();
+
+    String targetId = game.getPendingStealFromPlayerId();
+    PlayerState from = game.getPlayers().stream()
+        .filter(p -> p.getPlayerId().equals(stealerId)).findFirst().orElse(null);
+    PlayerState to = game.getPlayers().stream()
+        .filter(p -> p.getPlayerId().equals(targetId)).findFirst().orElse(null);
+
+    if (from == null || to == null || selectedIndex < 1 || selectedIndex > game.getSelectedCatCards().size()) {
+        return ResponseEntity.badRequest().build();
+    }
+
+    CardType stolen = game.getSelectedCatCards().get(selectedIndex - 1);
+
+    if (!to.getHand().remove(stolen)) return ResponseEntity.badRequest().build();
+
+    // Remove 2 identical cat cards from the stealer's hand
+    Map<CardType, Long> catCardCounts = from.getHand().stream()
+        .filter(c -> c.name().startsWith("CAT_"))
+        .collect(Collectors.groupingBy(c -> c, Collectors.counting()));
+
+    CardType catUsed = null;
+    for (Map.Entry<CardType, Long> entry : catCardCounts.entrySet()) {
+        if (entry.getValue() >= 2) {
+            catUsed = entry.getKey();
+            break;
+        }
+    }
+
+    if (catUsed == null) {
+        return ResponseEntity.badRequest().build(); // sanity check
+    }
+
+    // Remove two instances of the used cat card
+    int removed = 0;
+    List<CardType> newHand = new ArrayList<>();
+    for (CardType c : from.getHand()) {
+        if (removed < 2 && c == catUsed) {
+            removed++;
+            continue;
+        }
+        newHand.add(c);
+    }
+    from.setHand(newHand);
+    // Add both used cat cards to the used pile
+    game.getUsedCards().add(catUsed);
+    game.getUsedCards().add(catUsed);
+
+    from.getHand().add(stolen);
+
+    // Clear temp state
+    game.setSelectedCatCards(new ArrayList<>());
+    game.setPendingStealFromPlayerId(null);
+
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
+
+    return ResponseEntity.ok().build();
+  }
+
 
   @PostMapping("/draw/{lobbyId}")
   public ResponseEntity<Void> drawCard(@PathVariable String lobbyId, @RequestParam String playerId) {
