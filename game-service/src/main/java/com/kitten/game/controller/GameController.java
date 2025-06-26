@@ -395,4 +395,55 @@ public class GameController {
     return ResponseEntity.ok().build();
   }
 
+  @PostMapping("/cat/steal-defuse/{lobbyId}")
+  public ResponseEntity<Void> handleDefuseSteal( @PathVariable String lobbyId, @RequestParam String fromPlayerId, @RequestParam String toPlayerId) {
+
+    GameState game = gameService.getGame(lobbyId);
+    if (game == null) return ResponseEntity.notFound().build();
+
+    PlayerState from = game.getPlayers().stream()
+        .filter(p -> p.getPlayerId().equals(fromPlayerId)).findFirst().orElse(null);
+    PlayerState to = game.getPlayers().stream()
+        .filter(p -> p.getPlayerId().equals(toPlayerId)).findFirst().orElse(null);
+
+    if (from == null || to == null) return ResponseEntity.badRequest().build();
+
+    // Find 3 identical cat cards in "from"'s hand
+    Map<CardType, Long> catCounts = from.getHand().stream()
+        .filter(c -> c.name().startsWith("CAT_"))
+        .collect(Collectors.groupingBy(c -> c, Collectors.counting()));
+
+    CardType catUsed = null;
+    for (Map.Entry<CardType, Long> entry : catCounts.entrySet()) {
+        if (entry.getValue() >= 3) {
+            catUsed = entry.getKey();
+            break;
+        }
+    }
+
+    if (catUsed == null) return ResponseEntity.badRequest().build();
+
+    // Remove 3 cat cards
+    int removed = 0;
+    List<CardType> newHand = new ArrayList<>();
+    for (CardType c : from.getHand()) {
+        if (removed < 3 && c == catUsed) {
+            removed++;
+            game.getUsedCards().add(c);
+            continue;
+        }
+        newHand.add(c);
+    }
+    from.setHand(newHand);
+
+    // Attempt to steal DEFUSE
+    if (to.getHand().remove(CardType.DEFUSE)) {
+        from.getHand().add(CardType.DEFUSE);
+    }
+
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
+
+    return ResponseEntity.ok().build();
+  }
+
 }
