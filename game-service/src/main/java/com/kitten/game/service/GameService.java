@@ -33,7 +33,7 @@ public class GameService {
     deck.addAll(Collections.nCopies(4, CardType.SHUFFLE));
     deck.addAll(Collections.nCopies(4, CardType.DRAW_FROM_BOTTOM));
     deck.addAll(Collections.nCopies(4, CardType.FAVOR));
-    deck.addAll(Collections.nCopies(5, CardType.NOPE));
+    // deck.addAll(Collections.nCopies(5, CardType.NOPE));
     deck.addAll(Collections.nCopies(4, CardType.CAT_TACO));
     deck.addAll(Collections.nCopies(4, CardType.CAT_WATERMELON));
     deck.addAll(Collections.nCopies(4, CardType.CAT_POTATO));
