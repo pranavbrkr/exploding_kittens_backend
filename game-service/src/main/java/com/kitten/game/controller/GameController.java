@@ -32,6 +32,20 @@ public class GameController {
   @Autowired
   private SimpMessagingTemplate messagingTemplate;
 
+  /**
+   * Finds the next valid player index
+   */
+  private int findNextValidPlayerIndex(GameState game, int currentIndex) {
+    if (game.getPlayers().isEmpty()) {
+      return -1; // No players left
+    }
+    
+    // Since eliminated players are removed from the list, we just need to go to the next index
+    // If we're at the end, wrap around to the beginning
+    int nextIndex = (currentIndex + 1) % game.getPlayers().size();
+    return nextIndex;
+  }
+
   @PostMapping("/start")
   public GameState startGame(@RequestParam("lobbyId") String lobbyId, @RequestBody List<String> playerIds) {
     GameState game =  gameService.startGame(lobbyId, playerIds);
@@ -51,12 +65,23 @@ public class GameController {
     return ResponseEntity.ok(game);
   }
 
+  @GetMapping("/{lobbyId}/winner")
+  public ResponseEntity<String> getGameWinner(@PathVariable("lobbyId") String lobbyId) {
+    String winner = gameService.getGameWinner(lobbyId);
+    if (winner == null) {
+      return ResponseEntity.ok(""); // Game is still ongoing
+    }
+    return ResponseEntity.ok(winner);
+  }
+
   @PostMapping("/skip/{lobbyId}")
   public ResponseEntity<Void> skipTurn(@PathVariable String lobbyId) {
     GameState game = gameService.getGame(lobbyId);
     if (game == null) return ResponseEntity.notFound().build();
 
-    int next = (game.getCurrentPlayerIndex() + 1) % game.getPlayers().size();
+    int next = findNextValidPlayerIndex(game, game.getCurrentPlayerIndex());
+    if (next == -1) return ResponseEntity.badRequest().build(); // No players left
+    
     game.setCurrentPlayerIndex(next);
 
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", game.getPlayers().get(next).getPlayerId());
@@ -120,7 +145,9 @@ public class GameController {
     }
 
     if (card == CardType.ATTACK) {
-      int next = (currentIndex + 1) % game.getPlayers().size();
+      int next = findNextValidPlayerIndex(game, currentIndex);
+      if (next == -1) return ResponseEntity.badRequest().build(); // No players left
+      
       game.setCurrentPlayerIndex(next);
       game.setCardsToDraw(game.getCardsToDraw() + 2); // 2 from attack + 1 normal = 3
 
@@ -141,7 +168,9 @@ public class GameController {
     }
 
     if (endTurnEarly || game.getCardsToDraw() <= 0) {
-      int next = (currentIndex + 1) % game.getPlayers().size();
+      int next = findNextValidPlayerIndex(game, currentIndex);
+      if (next == -1) return ResponseEntity.badRequest().build(); // No players left
+      
       game.setCurrentPlayerIndex(next);
       game.setCardsToDraw(1);
 
@@ -369,11 +398,24 @@ public class GameController {
     }
 
     if (endTurnEarly || game.getCardsToDraw() <= 0) {
-      int next = (currentIndex + 1) % game.getPlayers().size();
-      game.setCurrentPlayerIndex(next);
-      game.setCardsToDraw(1);
+      // If endTurnEarly is true, the GameService has already set the correct next player
+      // We only need to handle normal turn progression
+      if (!endTurnEarly) {
+        int next = findNextValidPlayerIndex(game, currentIndex);
+        if (next == -1) return ResponseEntity.badRequest().build(); // No players left
+        
+        game.setCurrentPlayerIndex(next);
+        game.setCardsToDraw(1);
 
-      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", game.getPlayers().get(next).getPlayerId());
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", game.getPlayers().get(next).getPlayerId());
+      } else {
+        // Turn was already set by GameService, just reset cards to draw
+        game.setCardsToDraw(1);
+        
+        // Send the turn update with the current player
+        String currentPlayerId = game.getPlayers().get(game.getCurrentPlayerIndex()).getPlayerId();
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", currentPlayerId);
+      }
     }
 
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
