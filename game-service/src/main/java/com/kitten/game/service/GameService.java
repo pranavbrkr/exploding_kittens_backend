@@ -42,7 +42,7 @@ public class GameService {
     return 0; // Since eliminated players are removed from the list, index 0 should be valid
   }
   
-  public GameState startGame(String lobbyId, List<String> playerIds) {
+  public GameState startGame(String lobbyId, List<String> playerIds, List<String> playerNames) {
     if (gameStore.containsKey(lobbyId)) {
       return gameStore.get(lobbyId);
     }
@@ -68,13 +68,16 @@ public class GameService {
     Collections.shuffle(deck);
 
     List<PlayerState> players = new ArrayList<>();
-    for (String id: playerIds) {
+    for (int i = 0; i < playerIds.size(); i++) {
+      String playerId = playerIds.get(i);
+      String playerName = i < playerNames.size() ? playerNames.get(i) : "Player " + playerId;
+      
       List<CardType> hand = new ArrayList<>();
       hand.add(CardType.DEFUSE);
-      for (int i = 0; i < 7; i++) {
+      for (int j = 0; j < 7; j++) {
         hand.add(deck.remove(0));
       }
-      players.add(new PlayerState(id, hand));
+      players.add(new PlayerState(playerId, playerName, hand));
     }
 
     deck.addAll(Collections.nCopies(3, CardType.EXPLODING_KITTEN));

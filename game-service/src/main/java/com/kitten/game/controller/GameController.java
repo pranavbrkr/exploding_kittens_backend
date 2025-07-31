@@ -2,6 +2,7 @@ package com.kitten.game.controller;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -47,13 +48,24 @@ public class GameController {
   }
 
   @PostMapping("/start")
-  public GameState startGame(@RequestParam("lobbyId") String lobbyId, @RequestBody List<String> playerIds) {
-    GameState game =  gameService.startGame(lobbyId, playerIds);
+  public GameState startGame(@RequestParam("lobbyId") String lobbyId, @RequestBody GameStartRequest request) {
+    GameState game = gameService.startGame(lobbyId, request.getPlayerIds(), request.getPlayerNames());
 
     String currentPlayerId = game.getPlayers().get(game.getCurrentPlayerIndex()).getPlayerId();
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", currentPlayerId);
 
     return game;
+  }
+
+  // Inner class for request
+  public static class GameStartRequest {
+    private List<String> playerIds;
+    private List<String> playerNames;
+
+    public List<String> getPlayerIds() { return playerIds; }
+    public void setPlayerIds(List<String> playerIds) { this.playerIds = playerIds; }
+    public List<String> getPlayerNames() { return playerNames; }
+    public void setPlayerNames(List<String> playerNames) { this.playerNames = playerNames; }
   }
 
   @GetMapping("/{lobbyId}")
@@ -79,10 +91,20 @@ public class GameController {
     GameState game = gameService.getGame(lobbyId);
     if (game == null) return ResponseEntity.notFound().build();
 
-    int next = findNextValidPlayerIndex(game, game.getCurrentPlayerIndex());
+    int currentIndex = game.getCurrentPlayerIndex();
+    String currentPlayerId = game.getPlayers().get(currentIndex).getPlayerId();
+    String currentPlayerName = game.getPlayers().get(currentIndex).getPlayerName();
+    
+    int next = findNextValidPlayerIndex(game, currentIndex);
     if (next == -1) return ResponseEntity.badRequest().build(); // No players left
     
     game.setCurrentPlayerIndex(next);
+
+    // Send action notification
+    Map<String, Object> actionData = new HashMap<>();
+    actionData.put("message", currentPlayerName + " used SKIP");
+    actionData.put("type", "info");
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
 
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", game.getPlayers().get(next).getPlayerId());
     return ResponseEntity.ok().build();
@@ -105,17 +127,37 @@ public class GameController {
 
     if (card == CardType.SHUFFLE) {
       Collections.shuffle(game.getDeck());
+      
+      // Send action notification
+      Map<String, Object> actionData = new HashMap<>();
+      actionData.put("message", currentPlayer.getPlayerName() + " used SHUFFLE");
+      actionData.put("type", "info");
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
+      
       return ResponseEntity.ok().build();
     }
 
     if (card == CardType.SKIP) {
       game.setCardsToDraw(game.getCardsToDraw() - 1);
+      
+      // Send action notification
+      Map<String, Object> actionData = new HashMap<>();
+      actionData.put("message", currentPlayer.getPlayerName() + " used SKIP");
+      actionData.put("type", "info");
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
     }
 
     if (card == CardType.SEE_THE_FUTURE) {
       int end = Math.min(3, game.getDeck().size());
       List<CardType> topCards = game.getDeck().subList(0, end);
       messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/future/" + playerId, topCards);
+      
+      // Send action notification
+      Map<String, Object> actionData = new HashMap<>();
+      actionData.put("message", currentPlayer.getPlayerName() + " used SEE THE FUTURE");
+      actionData.put("type", "info");
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
+      
       return ResponseEntity.ok().build();
     }
 
@@ -123,6 +165,13 @@ public class GameController {
       int end = Math.min(3, game.getDeck().size());
       List<CardType> topCards = game.getDeck().subList(0, end);
       messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/alter/" + playerId, topCards);
+      
+      // Send action notification
+      Map<String, Object> actionData = new HashMap<>();
+      actionData.put("message", currentPlayer.getPlayerName() + " used ALTER THE FUTURE");
+      actionData.put("type", "info");
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
+      
       return ResponseEntity.ok().build();
     }
 
@@ -130,6 +179,12 @@ public class GameController {
       if (!game.getDeck().isEmpty()) {
         CardType drawnCard = game.getDeck().remove(game.getDeck().size() - 1);
         endTurnEarly = gameService.handleDrawnCard(drawnCard, currentPlayer, game);
+        
+        // Send action notification
+        Map<String, Object> actionData = new HashMap<>();
+        actionData.put("message", currentPlayer.getPlayerName() + " used DRAW FROM BOTTOM");
+        actionData.put("type", "info");
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
         // currentPlayer.getHand().add(game.getDeck().remove(game.getDeck().size() - 1));
         // game.setCardsToDraw(game.getCardsToDraw() - 1);
       }
@@ -141,6 +196,13 @@ public class GameController {
         .map(PlayerState::getPlayerId)
         .filter(pid -> !pid.equals(playerId))
         .toList());
+      
+      // Send action notification
+      Map<String, Object> actionData = new HashMap<>();
+      actionData.put("message", currentPlayer.getPlayerName() + " used FAVOR");
+      actionData.put("type", "info");
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
+      
       return ResponseEntity.ok().build();
     }
 
@@ -150,6 +212,12 @@ public class GameController {
       
       game.setCurrentPlayerIndex(next);
       game.setCardsToDraw(game.getCardsToDraw() + 2); // 2 from attack + 1 normal = 3
+
+      // Send action notification
+      Map<String, Object> actionData = new HashMap<>();
+      actionData.put("message", currentPlayer.getPlayerName() + " used ATTACK");
+      actionData.put("type", "warning");
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
 
       messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", game.getPlayers().get(next).getPlayerId());
       messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
@@ -164,6 +232,13 @@ public class GameController {
           .toList();
 
       messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/targeted/select/" + playerId, targets);
+      
+      // Send action notification
+      Map<String, Object> actionData = new HashMap<>();
+      actionData.put("message", currentPlayer.getPlayerName() + " used TARGETED ATTACK");
+      actionData.put("type", "warning");
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
+      
       return ResponseEntity.ok().build();
     }
 
@@ -206,6 +281,25 @@ public class GameController {
     if (targetIndex == -1) return ResponseEntity.badRequest().build();
     game.setCurrentPlayerIndex(targetIndex);
 
+    // Get player names for the notification
+    String fromPlayerName = "Unknown Player";
+    String toPlayerName = "Unknown Player";
+    
+    for (PlayerState player : game.getPlayers()) {
+      if (player.getPlayerId().equals(fromPlayerId)) {
+        fromPlayerName = player.getPlayerName();
+      }
+      if (player.getPlayerId().equals(toPlayerId)) {
+        toPlayerName = player.getPlayerName();
+      }
+    }
+    
+    // Send action notification
+    Map<String, Object> actionData = new HashMap<>();
+    actionData.put("message", fromPlayerName + " used targeted attack on " + toPlayerName);
+    actionData.put("type", "warning");
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
+
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", toPlayerId);
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
 
@@ -236,7 +330,30 @@ public class GameController {
 
   @PostMapping("/favor/request/{lobbyId}")
   public ResponseEntity<Void> favorRequest(@PathVariable String lobbyId, @RequestParam String fromPlayerId, @RequestParam String toPlayerId) {
+    GameState game = gameService.getGame(lobbyId);
+    if (game == null) return ResponseEntity.notFound().build();
+    
+    // Get player names for the notification
+    String fromPlayerName = "Unknown Player";
+    String toPlayerName = "Unknown Player";
+    
+    for (PlayerState player : game.getPlayers()) {
+      if (player.getPlayerId().equals(fromPlayerId)) {
+        fromPlayerName = player.getPlayerName();
+      }
+      if (player.getPlayerId().equals(toPlayerId)) {
+        toPlayerName = player.getPlayerName();
+      }
+    }
+    
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/favor/request/" + toPlayerId, fromPlayerId);
+    
+    // Send action notification
+    Map<String, Object> actionData = new HashMap<>();
+    actionData.put("message", fromPlayerName + " asked favor from " + toPlayerName);
+    actionData.put("type", "info");
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
+    
     return ResponseEntity.ok().build();
   }
 
@@ -367,6 +484,16 @@ public class GameController {
 
     from.getHand().add(stolen);
 
+    // Get player names for the notification
+    String stealerName = from.getPlayerName();
+    String targetName = to.getPlayerName();
+    
+    // Send action notification for cat card stealing
+    Map<String, Object> actionData = new HashMap<>();
+    actionData.put("message", stealerName + " stole a card from " + targetName + " using cat cards");
+    actionData.put("type", "info");
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
+
     // Clear temp state
     game.setSelectedCatCards(new ArrayList<>());
     game.setPendingStealFromPlayerId(null);
@@ -393,6 +520,20 @@ public class GameController {
     if (!game.getDeck().isEmpty()) {
       CardType drawnCard = game.getDeck().remove(0);
       endTurnEarly = gameService.handleDrawnCard(drawnCard, currentPlayer, game);
+      
+      // Send action notification for drawing a card
+      Map<String, Object> actionData = new HashMap<>();
+      actionData.put("message", currentPlayer.getPlayerName() + " drew a card from the deck");
+      actionData.put("type", "info");
+      messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
+      
+      // If the drawn card was an Exploding Kitten and player used Defuse, send additional notification
+      if (drawnCard == CardType.EXPLODING_KITTEN && endTurnEarly) {
+        Map<String, Object> defuseActionData = new HashMap<>();
+        defuseActionData.put("message", currentPlayer.getPlayerName() + " used DEFUSE");
+        defuseActionData.put("type", "success");
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", defuseActionData);
+      }
       // currentPlayer.getHand().add(game.getDeck().remove(0));
       // game.setCardsToDraw(game.getCardsToDraw() - 1);
     }
@@ -478,10 +619,27 @@ public class GameController {
     }
     from.setHand(newHand);
 
+    // Get player names for the notification
+    String stealerName = from.getPlayerName();
+    String targetName = to.getPlayerName();
+    
     // Attempt to steal DEFUSE
+    boolean defuseStolen = false;
     if (to.getHand().remove(CardType.DEFUSE)) {
         from.getHand().add(CardType.DEFUSE);
+        defuseStolen = true;
     }
+    
+    // Send action notification for defuse stealing
+    Map<String, Object> actionData = new HashMap<>();
+    if (defuseStolen) {
+        actionData.put("message", stealerName + " stole a DEFUSE card from " + targetName + " using 3 cat cards");
+        actionData.put("type", "warning");
+    } else {
+        actionData.put("message", stealerName + " attempted to steal DEFUSE from " + targetName + " but failed");
+        actionData.put("type", "info");
+    }
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
 
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
 
