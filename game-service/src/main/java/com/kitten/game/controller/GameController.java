@@ -527,12 +527,20 @@ public class GameController {
       actionData.put("type", "info");
       messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
       
-      // If the drawn card was an Exploding Kitten and player used Defuse, send additional notification
-      if (drawnCard == CardType.EXPLODING_KITTEN && endTurnEarly) {
-        Map<String, Object> defuseActionData = new HashMap<>();
-        defuseActionData.put("message", currentPlayer.getPlayerName() + " used DEFUSE");
-        defuseActionData.put("type", "success");
-        messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", defuseActionData);
+      // If the drawn card was an Exploding Kitten, send notification about getting exploding kitten
+      if (drawnCard == CardType.EXPLODING_KITTEN) {
+        Map<String, Object> explodingActionData = new HashMap<>();
+        explodingActionData.put("message", currentPlayer.getPlayerName() + " got exploding kitten");
+        explodingActionData.put("type", "error");
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", explodingActionData);
+        
+        // If player used Defuse, send additional notification
+        if (endTurnEarly) {
+          Map<String, Object> defuseActionData = new HashMap<>();
+          defuseActionData.put("message", currentPlayer.getPlayerName() + " used DEFUSE");
+          defuseActionData.put("type", "success");
+          messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", defuseActionData);
+        }
       }
       // currentPlayer.getHand().add(game.getDeck().remove(0));
       // game.setCardsToDraw(game.getCardsToDraw() - 1);
