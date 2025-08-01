@@ -1,7 +1,5 @@
-- Feral wildcard in cat combinations
 - Activity log
 - Alter the future (Fix the dnd glitch)
-- favor and attack modal beautify
 - Add Nope card
 - Nope card (Instead of play, button when attacked or favor would be better option)
 - attack stacks
