@@ -16,6 +16,7 @@ public class GameState {
   private String targetedAttackTargetId;
   private String pendingStealFromPlayerId;
   private List<CardType> selectedCatCards = new ArrayList<>();
+  private String catComboType; // "steal_random" or "steal_defuse"
 
   public GameState() {}
 
@@ -118,6 +119,14 @@ public class GameState {
 
   public void setSelectedCatCards(List<CardType> selectedCatCards) {
     this.selectedCatCards = selectedCatCards;
+  }
+
+  public String getCatComboType() {
+    return catComboType;
+  }
+
+  public void setCatComboType(String catComboType) {
+    this.catComboType = catComboType;
   }
 
 }

@@ -361,18 +361,27 @@ public class GameController {
   @PostMapping("/cat-combo/{lobbyId}")
   public ResponseEntity<Void> handleCatCombo(@PathVariable String lobbyId, @RequestParam String playerId, @RequestBody List<CardType> cats) {
     GameState game = gameService.getGame(lobbyId);
-    if (game == null || cats.size() != 2 || !cats.get(0).equals(cats.get(1))) return ResponseEntity.badRequest().build();
+    if (game == null) return ResponseEntity.notFound().build();
 
     PlayerState player = game.getPlayers().stream()
         .filter(p -> p.getPlayerId().equals(playerId)).findFirst().orElse(null);
     if (player == null) return ResponseEntity.notFound().build();
 
-    // Remove cat cards from hand
-    if (!player.getHand().remove(cats.get(0)) || !player.getHand().remove(cats.get(1))) {
+    // Validate cat combination
+    CatComboResult comboResult = validateCatCombo(cats);
+    if (!comboResult.isValid()) {
         return ResponseEntity.badRequest().build();
     }
 
+    // Remove cat cards from hand
+    for (CardType cat : cats) {
+        if (!player.getHand().remove(cat)) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     game.setSelectedCatCards(cats);
+    game.setCatComboType(comboResult.getComboType()); // Store combo type for later use
 
     // Notify frontend to select opponent
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/cat/select-opponent/" + playerId,
@@ -382,6 +391,78 @@ public class GameController {
             .toList());
 
     return ResponseEntity.ok().build();
+  }
+
+  // Helper class to store cat combo validation results
+  private static class CatComboResult {
+    private final boolean valid;
+    private final String comboType; // "steal_random" or "steal_defuse"
+
+    public CatComboResult(boolean valid, String comboType) {
+      this.valid = valid;
+      this.comboType = comboType;
+    }
+
+    public boolean isValid() { return valid; }
+    public String getComboType() { return comboType; }
+  }
+
+  // Validate cat combinations including feral cats
+  private CatComboResult validateCatCombo(List<CardType> cats) {
+    if (cats == null || cats.size() < 2 || cats.size() > 3) {
+      return new CatComboResult(false, null);
+    }
+
+    // Count feral cats and regular cats
+    long feralCount = cats.stream().filter(c -> c == CardType.CAT_FERAL).count();
+    long regularCatCount = cats.stream().filter(c -> c != CardType.CAT_FERAL && c.name().startsWith("CAT_")).count();
+    
+    // Check for valid combinations:
+    
+    // For steal random card (2 cards):
+    
+    // 1. 2 same cat cards (any cat cards, including feral)
+    if (cats.size() == 2) {
+      CardType firstCat = cats.get(0);
+      if (firstCat == cats.get(1) && firstCat.name().startsWith("CAT_")) {
+        return new CatComboResult(true, "steal_random");
+      }
+    }
+    
+    // 2. 1 feral + 1 regular cat = steal random card
+    if (cats.size() == 2 && feralCount == 1 && regularCatCount == 1) {
+      return new CatComboResult(true, "steal_random");
+    }
+    
+    // For steal defuse (3 cards):
+    
+    // 3. 3 same cat cards (any cat cards, including feral)
+    if (cats.size() == 3) {
+      CardType firstCat = cats.get(0);
+      if (firstCat == cats.get(1) && firstCat == cats.get(2) && firstCat.name().startsWith("CAT_")) {
+        return new CatComboResult(true, "steal_defuse");
+      }
+    }
+    
+    // 4. 2 feral + 1 regular cat = steal defuse
+    if (cats.size() == 3 && feralCount == 2 && regularCatCount == 1) {
+      List<CardType> ferals = cats.stream().filter(c -> c == CardType.CAT_FERAL).collect(Collectors.toList());
+      List<CardType> regulars = cats.stream().filter(c -> c != CardType.CAT_FERAL && c.name().startsWith("CAT_")).collect(Collectors.toList());
+      
+      if (ferals.size() == 2 && regulars.size() == 1) {
+        return new CatComboResult(true, "steal_defuse");
+      }
+    }
+    
+    // 5. 1 feral + 2 same regular cat cards = steal defuse
+    if (cats.size() == 3 && feralCount == 1 && regularCatCount == 2) {
+      List<CardType> regulars = cats.stream().filter(c -> c != CardType.CAT_FERAL && c.name().startsWith("CAT_")).collect(Collectors.toList());
+      if (regulars.size() == 2 && regulars.get(0) == regulars.get(1)) {
+        return new CatComboResult(true, "steal_defuse");
+      }
+    }
+
+    return new CatComboResult(false, null);
   }
 
   @GetMapping("/cat/opponents/{lobbyId}")
@@ -404,28 +485,89 @@ public class GameController {
     GameState game = gameService.getGame(lobbyId);
     if (game == null) return ResponseEntity.notFound().build();
 
-    PlayerState target = game.getPlayers().stream()
-        .filter(p -> p.getPlayerId().equals(toPlayerId)).findFirst().orElse(null);
-
-    if (target == null || target.getHand().isEmpty()) {
+    String comboType = game.getCatComboType();
+    if (comboType == null) {
         return ResponseEntity.badRequest().build();
     }
 
-    List<CardType> shuffledHand = new ArrayList<>(target.getHand());
-    Collections.shuffle(shuffledHand);
+    PlayerState target = game.getPlayers().stream()
+        .filter(p -> p.getPlayerId().equals(toPlayerId)).findFirst().orElse(null);
 
-    List<Integer> indices = new ArrayList<>();
-    for (int i = 1; i <= shuffledHand.size(); i++) {
-        indices.add(i); // Show numbered options
+    if (target == null) {
+        return ResponseEntity.badRequest().build();
     }
 
-    // Send to frontend with count of options (1..N)
-    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/cat/select-number/" + fromPlayerId,
-        indices);
+    if ("steal_defuse".equals(comboType)) {
+        // Direct defuse stealing - no need to select card
+        return handleDefuseStealDirect(lobbyId, fromPlayerId, toPlayerId);
+    } else if ("steal_random".equals(comboType)) {
+        // Random card stealing - need to select from opponent's hand
+        if (target.getHand().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
 
-    // Store mapping for future lookup
-    game.setPendingStealFromPlayerId(toPlayerId);
-    game.setSelectedCatCards(shuffledHand); // reuse to store randomized view
+        List<CardType> shuffledHand = new ArrayList<>(target.getHand());
+        Collections.shuffle(shuffledHand);
+
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 1; i <= shuffledHand.size(); i++) {
+            indices.add(i); // Show numbered options
+        }
+
+        // Send to frontend with count of options (1..N)
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/cat/select-number/" + fromPlayerId,
+            indices);
+
+        // Store mapping for future lookup
+        game.setPendingStealFromPlayerId(toPlayerId);
+        game.setSelectedCatCards(shuffledHand); // reuse to store randomized view
+
+        return ResponseEntity.ok().build();
+    }
+
+    return ResponseEntity.badRequest().build();
+  }
+
+  // Helper method for direct defuse stealing
+  private ResponseEntity<Void> handleDefuseStealDirect(String lobbyId, String fromPlayerId, String toPlayerId) {
+    GameState game = gameService.getGame(lobbyId);
+    if (game == null) return ResponseEntity.notFound().build();
+
+    PlayerState from = game.getPlayers().stream()
+        .filter(p -> p.getPlayerId().equals(fromPlayerId)).findFirst().orElse(null);
+    PlayerState to = game.getPlayers().stream()
+        .filter(p -> p.getPlayerId().equals(toPlayerId)).findFirst().orElse(null);
+
+    if (from == null || to == null) return ResponseEntity.badRequest().build();
+
+    // Get player names for the notification
+    String stealerName = from.getPlayerName();
+    String targetName = to.getPlayerName();
+    
+    // Attempt to steal DEFUSE
+    boolean defuseStolen = false;
+    if (to.getHand().remove(CardType.DEFUSE)) {
+        from.getHand().add(CardType.DEFUSE);
+        defuseStolen = true;
+    }
+    
+    // Send action notification for defuse stealing
+    Map<String, Object> actionData = new HashMap<>();
+    if (defuseStolen) {
+        actionData.put("message", stealerName + " stole a DEFUSE card from " + targetName + " using cat cards");
+        actionData.put("type", "warning");
+    } else {
+        actionData.put("message", stealerName + " attempted to steal DEFUSE from " + targetName + " but failed");
+        actionData.put("type", "info");
+    }
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
+
+    // Clear the cat combo state
+    game.setSelectedCatCards(new ArrayList<>());
+    game.setCatComboType(null);
+    game.setPendingStealFromPlayerId(null);
+
+    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
 
     return ResponseEntity.ok().build();
   }
@@ -450,37 +592,11 @@ public class GameController {
 
     if (!to.getHand().remove(stolen)) return ResponseEntity.badRequest().build();
 
-    // Remove 2 identical cat cards from the stealer's hand
-    Map<CardType, Long> catCardCounts = from.getHand().stream()
-        .filter(c -> c.name().startsWith("CAT_"))
-        .collect(Collectors.groupingBy(c -> c, Collectors.counting()));
-
-    CardType catUsed = null;
-    for (Map.Entry<CardType, Long> entry : catCardCounts.entrySet()) {
-        if (entry.getValue() >= 2) {
-            catUsed = entry.getKey();
-            break;
-        }
+    // The cat cards were already removed when the combo was played
+    // Just add them to the used pile
+    for (CardType cat : game.getSelectedCatCards()) {
+        game.getUsedCards().add(cat);
     }
-
-    if (catUsed == null) {
-        return ResponseEntity.badRequest().build(); // sanity check
-    }
-
-    // Remove two instances of the used cat card
-    int removed = 0;
-    List<CardType> newHand = new ArrayList<>();
-    for (CardType c : from.getHand()) {
-        if (removed < 2 && c == catUsed) {
-            removed++;
-            continue;
-        }
-        newHand.add(c);
-    }
-    from.setHand(newHand);
-    // Add both used cat cards to the used pile
-    game.getUsedCards().add(catUsed);
-    game.getUsedCards().add(catUsed);
 
     from.getHand().add(stolen);
 
@@ -497,6 +613,7 @@ public class GameController {
     // Clear temp state
     game.setSelectedCatCards(new ArrayList<>());
     game.setPendingStealFromPlayerId(null);
+    game.setCatComboType(null);
 
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
 
@@ -586,72 +703,6 @@ public class GameController {
     return ResponseEntity.ok().build();
   }
 
-  @PostMapping("/cat/steal-defuse/{lobbyId}")
-  public ResponseEntity<Void> handleDefuseSteal( @PathVariable String lobbyId, @RequestParam String fromPlayerId, @RequestParam String toPlayerId) {
 
-    GameState game = gameService.getGame(lobbyId);
-    if (game == null) return ResponseEntity.notFound().build();
-
-    PlayerState from = game.getPlayers().stream()
-        .filter(p -> p.getPlayerId().equals(fromPlayerId)).findFirst().orElse(null);
-    PlayerState to = game.getPlayers().stream()
-        .filter(p -> p.getPlayerId().equals(toPlayerId)).findFirst().orElse(null);
-
-    if (from == null || to == null) return ResponseEntity.badRequest().build();
-
-    // Find 3 identical cat cards in "from"'s hand
-    Map<CardType, Long> catCounts = from.getHand().stream()
-        .filter(c -> c.name().startsWith("CAT_"))
-        .collect(Collectors.groupingBy(c -> c, Collectors.counting()));
-
-    CardType catUsed = null;
-    for (Map.Entry<CardType, Long> entry : catCounts.entrySet()) {
-        if (entry.getValue() >= 3) {
-            catUsed = entry.getKey();
-            break;
-        }
-    }
-
-    if (catUsed == null) return ResponseEntity.badRequest().build();
-
-    // Remove 3 cat cards
-    int removed = 0;
-    List<CardType> newHand = new ArrayList<>();
-    for (CardType c : from.getHand()) {
-        if (removed < 3 && c == catUsed) {
-            removed++;
-            game.getUsedCards().add(c);
-            continue;
-        }
-        newHand.add(c);
-    }
-    from.setHand(newHand);
-
-    // Get player names for the notification
-    String stealerName = from.getPlayerName();
-    String targetName = to.getPlayerName();
-    
-    // Attempt to steal DEFUSE
-    boolean defuseStolen = false;
-    if (to.getHand().remove(CardType.DEFUSE)) {
-        from.getHand().add(CardType.DEFUSE);
-        defuseStolen = true;
-    }
-    
-    // Send action notification for defuse stealing
-    Map<String, Object> actionData = new HashMap<>();
-    if (defuseStolen) {
-        actionData.put("message", stealerName + " stole a DEFUSE card from " + targetName + " using 3 cat cards");
-        actionData.put("type", "warning");
-    } else {
-        actionData.put("message", stealerName + " attempted to steal DEFUSE from " + targetName + " but failed");
-        actionData.put("type", "info");
-    }
-    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
-
-    messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
-
-    return ResponseEntity.ok().build();
-  }
 
 }
