@@ -24,7 +24,7 @@ import com.kitten.game.model.PlayerState;
 import com.kitten.game.service.GameService;
 
 @RestController
-@RequestMapping("/game")
+@RequestMapping("/api/game")
 public class GameController {
 
   @Autowired

@@ -15,7 +15,7 @@ import com.kitten.player.model.Player;
 import com.kitten.player.service.PlayerService;
 
 @RestController
-@RequestMapping("/player")
+@RequestMapping("/api/player")
 @CrossOrigin
 public class PlayerController {
   

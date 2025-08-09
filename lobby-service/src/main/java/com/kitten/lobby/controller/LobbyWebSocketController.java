@@ -15,7 +15,7 @@ import com.kitten.lobby.model.Lobby;
 import com.kitten.lobby.service.LobbyService;
 
 @RestController
-@RequestMapping("/lobby")
+@RequestMapping("/api/lobby")
 public class LobbyWebSocketController {
   
   @Autowired
@@ -38,7 +38,7 @@ public class LobbyWebSocketController {
     List<String> playerNames = new ArrayList<>();
     for (String playerId : lobby.getPlayerIds()) {
       try {
-        String playerUrl = "http://localhost:8080/player/" + playerId;
+        String playerUrl = "http://localhost:8080/api/player/" + playerId;
         PlayerResponse playerResponse = restTemplate.getForObject(playerUrl, PlayerResponse.class);
         if (playerResponse != null) {
           playerNames.add(playerResponse.getName());
@@ -56,7 +56,7 @@ public class LobbyWebSocketController {
     gameStartRequest.setPlayerIds(lobby.getPlayerIds());
     gameStartRequest.setPlayerNames(playerNames);
 
-    String url = "http://localhost:8082/game/start?lobbyId=" + lobbyId;
+    String url = "http://localhost:8082/api/game/start?lobbyId=" + lobbyId;
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
 

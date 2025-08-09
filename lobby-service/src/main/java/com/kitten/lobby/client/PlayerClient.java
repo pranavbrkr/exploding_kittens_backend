@@ -16,7 +16,7 @@ public class PlayerClient {
   public boolean isValidPlayer(String playerId) {
     try {
       return this.webClient.get()
-          .uri("/player/{id}", playerId)
+          .uri("/api/player/{id}", playerId)
           .retrieve()
           .bodyToMono(Object.class)
           .block() != null;
@@ -29,7 +29,7 @@ public class PlayerClient {
   public PlayerResponse getPlayerDetails(String playerId) {
     try {
       return this.webClient.get()
-        .uri("/player/{id}", playerId)
+        .uri("/api/player/{id}", playerId)
         .retrieve()
         .bodyToMono(PlayerResponse.class)
         .block();

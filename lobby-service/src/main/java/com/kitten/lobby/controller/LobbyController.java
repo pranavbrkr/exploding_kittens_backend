@@ -22,7 +22,7 @@ import com.kitten.lobby.model.Lobby;
 import com.kitten.lobby.service.LobbyService;
 
 @RestController
-@RequestMapping("/lobby")
+@RequestMapping("/api/lobby")
 @CrossOrigin
 public class LobbyController {
   @Autowired
