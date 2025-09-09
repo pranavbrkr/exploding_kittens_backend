@@ -1,5 +1,5 @@
 # Multi-stage build for better performance and smaller image size
-FROM openjdk:21-jdk-slim AS builder
+FROM eclipse-temurin:17-jdk AS builder
 
 # Set working directory
 WORKDIR /app
