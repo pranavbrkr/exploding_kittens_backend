@@ -1,5 +1,5 @@
 # Multi-stage build for better performance and smaller image size
-FROM eclipse-temurin:17-jdk AS builder
+FROM eclipse-temurin:21-jdk AS builder
 
 # Set working directory
 WORKDIR /app
@@ -27,7 +27,7 @@ COPY . .
 RUN mvn clean package -DskipTests
 
 # Runtime stage
-FROM openjdk:21-jre-slim
+FROM eclipse-temurin:21-jre
 
 # Set working directory
 WORKDIR /app
