@@ -1,5 +1,5 @@
 # Multi-stage build for better performance and smaller image size
-FROM openjdk:24-jdk-slim AS builder
+FROM openjdk:21-jdk-slim AS builder
 
 # Set working directory
 WORKDIR /app
@@ -27,7 +27,7 @@ COPY . .
 RUN mvn clean package -DskipTests
 
 # Runtime stage
-FROM openjdk:24-jre-slim
+FROM openjdk:21-jre-slim
 
 # Set working directory
 WORKDIR /app
