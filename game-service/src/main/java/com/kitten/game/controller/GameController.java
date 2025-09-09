@@ -703,6 +703,9 @@ public class GameController {
     return ResponseEntity.ok().build();
   }
 
-
+  @GetMapping("/health")
+  public ResponseEntity<String> health() {
+    return ResponseEntity.ok("Game Service is running");
+  }
 
 }

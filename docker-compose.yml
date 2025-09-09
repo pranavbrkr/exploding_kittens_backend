@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  exploding-kittens-backend:
+    build: .
+    container_name: exploding-kittens-backend
+    ports:
+      - "8080:8080"  # Player Service
+      - "8081:8081"  # Lobby Service
+      - "8082:8082"  # Game Service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - FRONTEND_URL=http://localhost:3000
+      - ALLOWED_ORIGINS=*
+    networks:
+      - exploding-kittens-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/player/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  exploding-kittens-network:
+    driver: bridge

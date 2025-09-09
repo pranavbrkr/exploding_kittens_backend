@@ -1,4 +1,4 @@
-package com.kitten.lobby.config;
+package com.kitten.player.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;

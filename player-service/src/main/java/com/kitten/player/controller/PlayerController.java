@@ -1,6 +1,7 @@
 package com.kitten.player.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,5 +36,10 @@ public class PlayerController {
       throw new RuntimeException("Player not found");
     }
     return new PlayerResponse(player.getId(), player.getName());
+  }
+
+  @GetMapping("/health")
+  public ResponseEntity<String> health() {
+    return ResponseEntity.ok("Player Service is running");
   }
 }
