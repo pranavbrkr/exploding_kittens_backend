@@ -23,8 +23,8 @@ RUN mvn dependency:go-offline -B
 # Copy source code
 COPY . .
 
-# Build the project
-RUN mvn clean package -DskipTests
+# Build the project with Spring Boot plugin
+RUN mvn clean package -DskipTests -Dspring-boot.repackage.enabled=true
 
 # Runtime stage
 FROM eclipse-temurin:21-jre
@@ -39,9 +39,9 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy built JAR files from builder stage
-COPY --from=builder /app/player-service/target/*.jar /app/player-service.jar
-COPY --from=builder /app/lobby-service/target/*.jar /app/lobby-service.jar
-COPY --from=builder /app/game-service/target/*.jar /app/game-service.jar
+COPY --from=builder /app/player-service/target/player-service-*.jar /app/player-service.jar
+COPY --from=builder /app/lobby-service/target/lobby-service-*.jar /app/lobby-service.jar
+COPY --from=builder /app/game-service/target/game-service-*.jar /app/game-service.jar
 
 # Create a startup script that runs all three services
 RUN echo '#!/bin/bash\n\
