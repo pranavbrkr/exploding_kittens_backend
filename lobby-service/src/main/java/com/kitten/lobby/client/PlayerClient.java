@@ -1,5 +1,6 @@
 package com.kitten.lobby.client;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -9,8 +10,8 @@ import com.kitten.lobby.dto.PlayerResponse;
 public class PlayerClient {
   private final WebClient webClient;
 
-  public PlayerClient(WebClient.Builder builder) {
-    this.webClient = builder.baseUrl("http://localhost:8080").build();
+  public PlayerClient(WebClient.Builder builder, @Value("${player.service.url:http://localhost:8080}") String playerServiceUrl) {
+    this.webClient = builder.baseUrl(playerServiceUrl).build();
   }
 
   public boolean isValidPlayer(String playerId) {

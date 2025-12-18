@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -27,6 +28,12 @@ public class LobbyWebSocketController {
   @Autowired
   private RestTemplate restTemplate;
 
+  @Value("${player.service.url:http://localhost:8080}")
+  private String playerServiceUrl;
+
+  @Value("${game.service.url:http://localhost:8082}")
+  private String gameServiceUrl;
+
   @PostMapping("/start/{lobbyId}")
   public void startGame(@PathVariable("lobbyId") String lobbyId) {
     Lobby lobby = lobbyService.getLobbyById(lobbyId);
@@ -38,7 +45,7 @@ public class LobbyWebSocketController {
     List<String> playerNames = new ArrayList<>();
     for (String playerId : lobby.getPlayerIds()) {
       try {
-        String playerUrl = "http://localhost:8080/api/player/" + playerId;
+        String playerUrl = playerServiceUrl + "/api/player/" + playerId;
         PlayerResponse playerResponse = restTemplate.getForObject(playerUrl, PlayerResponse.class);
         if (playerResponse != null) {
           playerNames.add(playerResponse.getName());
@@ -56,7 +63,7 @@ public class LobbyWebSocketController {
     gameStartRequest.setPlayerIds(lobby.getPlayerIds());
     gameStartRequest.setPlayerNames(playerNames);
 
-    String url = "http://localhost:8082/api/game/start?lobbyId=" + lobbyId;
+    String url = gameServiceUrl + "/api/game/start?lobbyId=" + lobbyId;
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
 
