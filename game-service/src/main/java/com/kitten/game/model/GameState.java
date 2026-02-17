@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GameState {
+  private String gameId; // UUID of persisted game record
   private String lobbyId;
   private List<PlayerState> players;
   private List<String> eliminatedPlayers = new ArrayList<>();
@@ -26,6 +27,14 @@ public class GameState {
     this.deck = deck;
     this.currentPlayerIndex = currentPlayerIndex;
     this.gameStarted = gameStarted;
+  }
+
+  public String getGameId() {
+    return gameId;
+  }
+
+  public void setGameId(String gameId) {
+    this.gameId = gameId;
   }
 
   public String getLobbyId() {

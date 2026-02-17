@@ -28,9 +28,9 @@ Three microservices:
 
 ## How to Run
 
-### Prerequisites: Postgres for Player Service
+### Prerequisites: Postgres
 
-The **player-service** uses PostgreSQL for user storage. Start Postgres first (from the **backend repo root**):
+Both **player-service** (users) and **game-service** (games, game_participants) use PostgreSQL. Start Postgres first (from the **backend repo root**):
 
 ```bash
 cd exploding_kittens_backend

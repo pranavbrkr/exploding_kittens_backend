@@ -6,17 +6,30 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.kitten.game.entity.Game;
+import com.kitten.game.entity.GameParticipant;
 import com.kitten.game.model.CardType;
 import com.kitten.game.model.GameState;
 import com.kitten.game.model.PlayerState;
+import com.kitten.game.repository.GameParticipantRepository;
+import com.kitten.game.repository.GameRepository;
 
 @Service
 public class GameService {
-  
+
   private final Map<String, GameState> gameStore = new HashMap<>();
+  private final GameRepository gameRepository;
+  private final GameParticipantRepository gameParticipantRepository;
+
+  public GameService(GameRepository gameRepository, GameParticipantRepository gameParticipantRepository) {
+    this.gameRepository = gameRepository;
+    this.gameParticipantRepository = gameParticipantRepository;
+  }
   
   /**
    * Finds the next valid player index, skipping eliminated players
@@ -89,13 +102,60 @@ public class GameService {
     game.setLobbyId(lobbyId);
     game.setPlayers(players);
     game.setDeck(deck);
-    // game.setUsedCards(new ArrayList<>());
     game.setCardsToDraw(1);
     game.setGameStarted(true);
     game.setCurrentPlayerIndex(0);
 
+    // Persist game and participants
+    UUID gameId = persistGameStart(lobbyId, playerIds);
+    game.setGameId(gameId != null ? gameId.toString() : null);
+
     gameStore.put(lobbyId, game);
     return game;
+  }
+
+  @Transactional
+  protected UUID persistGameStart(String lobbyId, List<String> playerIds) {
+    try {
+      UUID gameId = UUID.randomUUID();
+      Game gameEntity = new Game(gameId, lobbyId);
+      gameRepository.save(gameEntity);
+      for (int i = 0; i < playerIds.size(); i++) {
+        UUID userId = UUID.fromString(playerIds.get(i));
+        gameParticipantRepository.save(new GameParticipant(gameId, userId, i));
+      }
+      return gameId;
+    } catch (Exception e) {
+      // Don't fail in-memory game if DB fails (e.g. game-service run without DB)
+      return null;
+    }
+  }
+
+  @Transactional
+  protected void persistGameFinished(String gameIdStr, String winnerPlayerId, List<String> eliminatedPlayerIds) {
+    if (gameIdStr == null) return;
+    try {
+      UUID gameId = UUID.fromString(gameIdStr);
+      Game game = gameRepository.findById(gameId).orElse(null);
+      if (game == null || game.getStatus() == Game.GameStatus.FINISHED) return;
+      game.setStatus(Game.GameStatus.FINISHED);
+      game.setEndedAt(java.time.Instant.now());
+      game.setWinnerUserId(UUID.fromString(winnerPlayerId));
+      gameRepository.save(game);
+      List<GameParticipant> participants = gameParticipantRepository.findByGameIdOrderBySeatIndex(gameId);
+      for (GameParticipant p : participants) {
+        if (p.getUserId().toString().equals(winnerPlayerId)) {
+          p.setResult("WIN");
+        } else if (eliminatedPlayerIds != null && eliminatedPlayerIds.contains(p.getUserId().toString())) {
+          p.setResult("ELIMINATED");
+        } else {
+          p.setResult("LOSS");
+        }
+        gameParticipantRepository.save(p);
+      }
+    } catch (Exception e) {
+      // Log but don't fail game flow
+    }
   }
 
   public GameState getGame(String lobbyId) {
@@ -149,8 +209,12 @@ public class GameService {
         
         // Check if game is over (only one player left)
         if (game.getPlayers().size() <= 1) {
-          // Game is over - winner is the remaining player
           game.setCardsToDraw(0);
+          if (game.getPlayers().size() == 1) {
+            game.setCurrentPlayerIndex(0); // winner is at index 0
+            String winnerId = game.getPlayers().get(0).getPlayerId();
+            persistGameFinished(game.getGameId(), winnerId, game.getEliminatedPlayers());
+          }
           return true;
         }
         

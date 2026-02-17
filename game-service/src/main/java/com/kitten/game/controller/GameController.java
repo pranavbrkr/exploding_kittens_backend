@@ -90,8 +90,10 @@ public class GameController {
   public ResponseEntity<Void> skipTurn(@PathVariable String lobbyId) {
     GameState game = gameService.getGame(lobbyId);
     if (game == null) return ResponseEntity.notFound().build();
+    if (game.getPlayers().size() <= 1) return ResponseEntity.status(409).build(); // Game over
 
     int currentIndex = game.getCurrentPlayerIndex();
+    if (currentIndex >= game.getPlayers().size()) return ResponseEntity.status(409).build();
     String currentPlayerId = game.getPlayers().get(currentIndex).getPlayerId();
     String currentPlayerName = game.getPlayers().get(currentIndex).getPlayerName();
     
@@ -114,9 +116,11 @@ public class GameController {
   public ResponseEntity<Void> playCard(@PathVariable String lobbyId, @RequestParam String playerId, @RequestParam String cardType) {
     GameState game = gameService.getGame(lobbyId);
     if (game == null) return ResponseEntity.notFound().build();
+    if (game.getPlayers().size() <= 1) return ResponseEntity.status(409).build(); // Game over
     boolean endTurnEarly = false;
 
     int currentIndex = game.getCurrentPlayerIndex();
+    if (currentIndex >= game.getPlayers().size()) return ResponseEntity.status(409).build();
     PlayerState currentPlayer = game.getPlayers().get(currentIndex);
     if (!currentPlayer.getPlayerId().equals(playerId)) return ResponseEntity.status(403).build();
 
@@ -625,9 +629,11 @@ public class GameController {
   public ResponseEntity<Void> drawCard(@PathVariable String lobbyId, @RequestParam String playerId) {
     GameState game = gameService.getGame(lobbyId);
     if (game == null) return ResponseEntity.notFound().build();
+    if (game.getPlayers().size() <= 1) return ResponseEntity.status(409).build(); // Game over
     boolean endTurnEarly = false;
 
     int currentIndex = game.getCurrentPlayerIndex();
+    if (currentIndex >= game.getPlayers().size()) return ResponseEntity.status(409).build();
     PlayerState currentPlayer = game.getPlayers().get(currentIndex);
 
     if(!currentPlayer.getPlayerId().equals(playerId)) {
@@ -664,23 +670,25 @@ public class GameController {
     }
 
     if (endTurnEarly || game.getCardsToDraw() <= 0) {
+      // Game may have just ended (one player left)
+      if (game.getPlayers().size() <= 1) {
+        game.setCardsToDraw(0);
+        messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/state", "");
+        return ResponseEntity.ok().build();
+      }
       // If endTurnEarly is true, the GameService has already set the correct next player
-      // We only need to handle normal turn progression
       if (!endTurnEarly) {
         int next = findNextValidPlayerIndex(game, currentIndex);
-        if (next == -1) return ResponseEntity.badRequest().build(); // No players left
-        
+        if (next == -1) return ResponseEntity.badRequest().build();
         game.setCurrentPlayerIndex(next);
         game.setCardsToDraw(1);
-
         messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", game.getPlayers().get(next).getPlayerId());
       } else {
-        // Turn was already set by GameService, just reset cards to draw
         game.setCardsToDraw(1);
-        
-        // Send the turn update with the current player
-        String currentPlayerId = game.getPlayers().get(game.getCurrentPlayerIndex()).getPlayerId();
-        messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", currentPlayerId);
+        int idx = game.getCurrentPlayerIndex();
+        if (idx >= 0 && idx < game.getPlayers().size()) {
+          messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", game.getPlayers().get(idx).getPlayerId());
+        }
       }
     }
 
