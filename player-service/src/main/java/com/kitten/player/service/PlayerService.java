@@ -1,23 +1,30 @@
 package com.kitten.player.service;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
-import com.kitten.player.model.Player;
+import com.kitten.player.dto.PlayerResponse;
+import com.kitten.player.model.User;
+import com.kitten.player.repository.UserRepository;
 
 @Service
 public class PlayerService {
-  private final Map<String, Player> playerStore = new HashMap<>();
 
-  public Player createPlayer(String name) {
-    Player player = new Player(name);
-    playerStore.put(player.getId(), player);
-    return player;
+  private final UserRepository userRepository;
+
+  public PlayerService(UserRepository userRepository) {
+    this.userRepository = userRepository;
   }
 
-  public Player getPlayerById(String id) {
-    return playerStore.get(id);
+  public PlayerResponse getPlayerById(String id) {
+    try {
+      UUID uuid = UUID.fromString(id);
+      return userRepository.findById(uuid)
+          .map(user -> new PlayerResponse(user.getId().toString(), user.getDisplayName()))
+          .orElse(null);
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
   }
 }
