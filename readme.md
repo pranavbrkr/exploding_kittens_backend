@@ -28,6 +28,19 @@ Three microservices:
 
 ## How to Run
 
+### Prerequisites: Postgres for Player Service
+
+The **player-service** uses PostgreSQL for user storage. Start Postgres first (from the **backend repo root**):
+
+```bash
+cd exploding_kittens_backend
+docker-compose up -d postgres
+```
+
+This creates database `explodingkittens` with user `kitten` / password `kitten`. If you use a different Postgres, set env vars: `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`.
+
+### Start all services
+
 1. **Build the project**
    ```bash
    mvn clean install
@@ -35,7 +48,7 @@ Three microservices:
 
 2. **Start all services**
    ```bash
-   # Start Player Service
+   # Start Player Service (requires Postgres running; see above)
    cd player-service
    mvn spring-boot:run
    
