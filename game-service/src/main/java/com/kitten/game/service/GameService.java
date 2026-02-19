@@ -25,10 +25,12 @@ public class GameService {
   private final Map<String, GameState> gameStore = new HashMap<>();
   private final GameRepository gameRepository;
   private final GameParticipantRepository gameParticipantRepository;
+  private final GameActionService gameActionService;
 
-  public GameService(GameRepository gameRepository, GameParticipantRepository gameParticipantRepository) {
+  public GameService(GameRepository gameRepository, GameParticipantRepository gameParticipantRepository, GameActionService gameActionService) {
     this.gameRepository = gameRepository;
     this.gameParticipantRepository = gameParticipantRepository;
+    this.gameActionService = gameActionService;
   }
   
   /**
@@ -127,6 +129,7 @@ public class GameService {
       return gameId;
     } catch (Exception e) {
       // Don't fail in-memory game if DB fails (e.g. game-service run without DB)
+      org.slf4j.LoggerFactory.getLogger(GameService.class).warn("Failed to persist game start: {}", e.getMessage(), e);
       return null;
     }
   }
@@ -201,12 +204,13 @@ public class GameService {
         return true;
       } else {
         // Player is eliminated
-        // Store the current player index before removing the player
         int eliminatedPlayerIndex = game.getCurrentPlayerIndex();
-        
+        String eliminatedPlayerId = player.getPlayerId();
+
         game.getPlayers().remove(player);
-        game.getEliminatedPlayers().add(player.getPlayerId());
-        
+        game.getEliminatedPlayers().add(eliminatedPlayerId);
+        gameActionService.recordActionWithPlayerIds(game.getGameId(), null, eliminatedPlayerId, null, "ELIMINATED", null);
+
         // Check if game is over (only one player left)
         if (game.getPlayers().size() <= 1) {
           game.setCardsToDraw(0);

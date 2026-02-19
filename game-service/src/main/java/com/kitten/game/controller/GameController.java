@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.kitten.game.model.CardType;
 import com.kitten.game.model.GameState;
 import com.kitten.game.model.PlayerState;
+import com.kitten.game.service.GameActionService;
 import com.kitten.game.service.GameService;
 
 @RestController
@@ -29,6 +30,9 @@ public class GameController {
 
   @Autowired
   private GameService gameService;
+
+  @Autowired
+  private GameActionService gameActionService;
 
   @Autowired
   private SimpMessagingTemplate messagingTemplate;
@@ -50,6 +54,8 @@ public class GameController {
   @PostMapping("/start")
   public GameState startGame(@RequestParam("lobbyId") String lobbyId, @RequestBody GameStartRequest request) {
     GameState game = gameService.startGame(lobbyId, request.getPlayerIds(), request.getPlayerNames());
+
+    gameActionService.recordActionWithPlayerIds(game.getGameId(), null, null, null, "GAME_START", null);
 
     String currentPlayerId = game.getPlayers().get(game.getCurrentPlayerIndex()).getPlayerId();
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", currentPlayerId);
@@ -108,6 +114,7 @@ public class GameController {
     actionData.put("type", "info");
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/action", actionData);
 
+    gameActionService.recordActionWithPlayerIds(game.getGameId(), null, currentPlayerId, null, "PLAY_SKIP", "{\"cardType\":\"SKIP\"}");
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/turn", game.getPlayers().get(next).getPlayerId());
     return ResponseEntity.ok().build();
   }
@@ -130,8 +137,8 @@ public class GameController {
     game.getUsedCards().add(card);
 
     if (card == CardType.SHUFFLE) {
+      gameActionService.recordActionWithPlayerIds(game.getGameId(), null, playerId, null, "PLAY_SHUFFLE", null);
       Collections.shuffle(game.getDeck());
-      
       // Send action notification
       Map<String, Object> actionData = new HashMap<>();
       actionData.put("message", currentPlayer.getPlayerName() + " used SHUFFLE");
@@ -142,8 +149,8 @@ public class GameController {
     }
 
     if (card == CardType.SKIP) {
+      gameActionService.recordActionWithPlayerIds(game.getGameId(), null, playerId, null, "PLAY_SKIP", "{\"cardType\":\"SKIP\"}");
       game.setCardsToDraw(game.getCardsToDraw() - 1);
-      
       // Send action notification
       Map<String, Object> actionData = new HashMap<>();
       actionData.put("message", currentPlayer.getPlayerName() + " used SKIP");
@@ -152,10 +159,10 @@ public class GameController {
     }
 
     if (card == CardType.SEE_THE_FUTURE) {
+      gameActionService.recordActionWithPlayerIds(game.getGameId(), null, playerId, null, "PLAY_SEE_THE_FUTURE", null);
       int end = Math.min(3, game.getDeck().size());
       List<CardType> topCards = game.getDeck().subList(0, end);
       messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/future/" + playerId, topCards);
-      
       // Send action notification
       Map<String, Object> actionData = new HashMap<>();
       actionData.put("message", currentPlayer.getPlayerName() + " used SEE THE FUTURE");
@@ -166,10 +173,10 @@ public class GameController {
     }
 
     if (card == CardType.ALTER_THE_FUTURE) {
+      gameActionService.recordActionWithPlayerIds(game.getGameId(), null, playerId, null, "PLAY_ALTER_THE_FUTURE", null);
       int end = Math.min(3, game.getDeck().size());
       List<CardType> topCards = game.getDeck().subList(0, end);
       messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/alter/" + playerId, topCards);
-      
       // Send action notification
       Map<String, Object> actionData = new HashMap<>();
       actionData.put("message", currentPlayer.getPlayerName() + " used ALTER THE FUTURE");
@@ -183,7 +190,7 @@ public class GameController {
       if (!game.getDeck().isEmpty()) {
         CardType drawnCard = game.getDeck().remove(game.getDeck().size() - 1);
         endTurnEarly = gameService.handleDrawnCard(drawnCard, currentPlayer, game);
-        
+        gameActionService.recordActionWithPlayerIds(game.getGameId(), null, playerId, null, "PLAY_DRAW_FROM_BOTTOM", "{\"cardType\":\"" + drawnCard.name() + "\"}");
         // Send action notification
         Map<String, Object> actionData = new HashMap<>();
         actionData.put("message", currentPlayer.getPlayerName() + " used DRAW FROM BOTTOM");
@@ -195,7 +202,8 @@ public class GameController {
     }
 
     if (card == CardType.FAVOR) {
-      game.setFavorFromPlayerId(playerId); // Set who played Favor
+      game.setFavorFromPlayerId(playerId);
+      gameActionService.recordActionWithPlayerIds(game.getGameId(), null, playerId, null, "PLAY_FAVOR", null);
       messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/favor/select/" + playerId, game.getPlayers().stream()
         .map(PlayerState::getPlayerId)
         .filter(pid -> !pid.equals(playerId))
@@ -212,10 +220,12 @@ public class GameController {
 
     if (card == CardType.ATTACK) {
       int next = findNextValidPlayerIndex(game, currentIndex);
-      if (next == -1) return ResponseEntity.badRequest().build(); // No players left
-      
+      if (next == -1) return ResponseEntity.badRequest().build();
+      String nextPlayerId = game.getPlayers().get(next).getPlayerId();
+      gameActionService.recordActionWithPlayerIds(game.getGameId(), null, playerId, nextPlayerId, "PLAY_ATTACK", null);
+
       game.setCurrentPlayerIndex(next);
-      game.setCardsToDraw(game.getCardsToDraw() + 2); // 2 from attack + 1 normal = 3
+      game.setCardsToDraw(game.getCardsToDraw() + 2);
 
       // Send action notification
       Map<String, Object> actionData = new HashMap<>();
@@ -230,6 +240,7 @@ public class GameController {
     }
 
     if (card == CardType.TARGETED_ATTACK) {
+      gameActionService.recordActionWithPlayerIds(game.getGameId(), null, playerId, null, "PLAY_TARGETED_ATTACK", null);
       List<String> targets = game.getPlayers().stream()
           .map(PlayerState::getPlayerId)
           .filter(pid -> !pid.equals(playerId))
@@ -270,6 +281,7 @@ public class GameController {
     GameState game = gameService.getGame(lobbyId);
     if (game == null) return ResponseEntity.notFound().build();
 
+    gameActionService.recordActionWithPlayerIds(game.getGameId(), null, fromPlayerId, toPlayerId, "TARGETED_ATTACK_CONFIRM", null);
     game.setTargetedAttackTargetId(toPlayerId);
     game.setCardsToDraw(game.getCardsToDraw() + 2); // 2 attack + 1 normal
 
@@ -315,6 +327,8 @@ public class GameController {
     GameState game = gameService.getGame(lobbyId);
     if (game == null) return ResponseEntity.notFound().build();
 
+    gameActionService.recordActionWithPlayerIds(game.getGameId(), null, toPlayerId, fromPlayerId, "FAVOR_RESPONSE", "{\"givenCard\":\"" + givenCard + "\"}");
+
     CardType card = CardType.valueOf(givenCard);
 
     PlayerState fromPlayer = game.getPlayers().stream()
@@ -336,7 +350,9 @@ public class GameController {
   public ResponseEntity<Void> favorRequest(@PathVariable String lobbyId, @RequestParam String fromPlayerId, @RequestParam String toPlayerId) {
     GameState game = gameService.getGame(lobbyId);
     if (game == null) return ResponseEntity.notFound().build();
-    
+
+    gameActionService.recordActionWithPlayerIds(game.getGameId(), null, fromPlayerId, toPlayerId, "FAVOR_REQUEST", null);
+
     // Get player names for the notification
     String fromPlayerName = "Unknown Player";
     String toPlayerName = "Unknown Player";
@@ -385,7 +401,8 @@ public class GameController {
     }
 
     game.setSelectedCatCards(cats);
-    game.setCatComboType(comboResult.getComboType()); // Store combo type for later use
+    game.setCatComboType(comboResult.getComboType());
+    gameActionService.recordActionWithPlayerIds(game.getGameId(), null, playerId, null, "CAT_COMBO", "{\"comboType\":\"" + comboResult.getComboType() + "\"}");
 
     // Notify frontend to select opponent
     messagingTemplate.convertAndSend("/topic/game/" + lobbyId + "/cat/select-opponent/" + playerId,
@@ -500,6 +517,8 @@ public class GameController {
     if (target == null) {
         return ResponseEntity.badRequest().build();
     }
+
+    gameActionService.recordActionWithPlayerIds(game.getGameId(), null, fromPlayerId, toPlayerId, "CAT_STEAL", "{\"comboType\":\"" + comboType + "\"}");
 
     if ("steal_defuse".equals(comboType)) {
         // Direct defuse stealing - no need to select card
@@ -643,7 +662,9 @@ public class GameController {
     if (!game.getDeck().isEmpty()) {
       CardType drawnCard = game.getDeck().remove(0);
       endTurnEarly = gameService.handleDrawnCard(drawnCard, currentPlayer, game);
-      
+
+      gameActionService.recordActionWithPlayerIds(game.getGameId(), null, playerId, null, "DRAW_CARD", "{\"cardType\":\"" + drawnCard.name() + "\"}");
+
       // Send action notification for drawing a card
       Map<String, Object> actionData = new HashMap<>();
       actionData.put("message", currentPlayer.getPlayerName() + " drew a card from the deck");
