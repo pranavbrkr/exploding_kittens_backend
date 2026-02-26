@@ -13,7 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.kitten.player.dto.AuthRequest;
 import com.kitten.player.dto.AuthResponse;
+import com.kitten.player.dto.CompleteRegistrationRequest;
 import com.kitten.player.dto.PlayerResponse;
+import com.kitten.player.dto.RegisterRequest;
+import com.kitten.player.dto.RegisterResponse;
+import com.kitten.player.dto.VerifyEmailRequest;
 import com.kitten.player.model.User;
 import com.kitten.player.repository.UserRepository;
 import com.kitten.player.service.AuthService;
@@ -32,9 +36,34 @@ public class AuthController {
   }
 
   @PostMapping("/register")
-  public ResponseEntity<?> register(@RequestBody AuthRequest request) {
+  public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
     try {
-      AuthResponse response = authService.register(request);
+      RegisterResponse response = authService.register(request);
+      return ResponseEntity.ok(response);
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
+    }
+  }
+
+  @PostMapping("/verify-email")
+  public ResponseEntity<?> verifyEmail(@RequestBody VerifyEmailRequest request) {
+    try {
+      AuthResponse response = authService.verifyEmail(request);
+      return ResponseEntity.ok(response);
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
+    }
+  }
+
+  @PostMapping("/complete-registration")
+  public ResponseEntity<?> completeRegistration(
+      @AuthenticationPrincipal UUID userId,
+      @RequestBody CompleteRegistrationRequest request) {
+    if (userId == null) {
+      return ResponseEntity.status(401).body(java.util.Map.of("message", "Not authenticated"));
+    }
+    try {
+      AuthResponse response = authService.completeRegistration(userId, request);
       return ResponseEntity.ok(response);
     } catch (IllegalArgumentException e) {
       return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
@@ -57,7 +86,7 @@ public class AuthController {
       return ResponseEntity.status(401).build();
     }
     return userRepository.findById(userId)
-        .map(user -> ResponseEntity.ok(new PlayerResponse(user.getId().toString(), user.getDisplayName())))
+        .map(user -> ResponseEntity.ok(new PlayerResponse(user.getId().toString(), user.getEffectiveDisplayName())))
         .orElse(ResponseEntity.status(401).build());
   }
 }

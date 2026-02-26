@@ -16,7 +16,12 @@ public class User {
   @Column(columnDefinition = "uuid")
   private UUID id;
 
-  @Column(unique = true, nullable = false)
+  /** Unique; used for login. One player per email. */
+  @Column(unique = true)
+  private String email;
+
+  /** Game name (unique), set after email verification. Null until complete-registration. */
+  @Column(unique = true)
   private String username;
 
   @Column(name = "display_name")
@@ -25,16 +30,30 @@ public class User {
   @Column(name = "password_hash", nullable = false)
   private String passwordHash;
 
+  @Column(name = "email_verified", nullable = false)
+  private boolean emailVerified;
+
+  @Column(name = "verification_code", length = 6)
+  private String verificationCode;
+
+  @Column(name = "verification_code_expires_at")
+  private Instant verificationCodeExpiresAt;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
   public User() {}
 
-  public User(String username, String displayName, String passwordHash) {
+  /** For new registration: email + password only; emailVerified=false, username=null. */
+  public User(String email, String passwordHash) {
     this.id = UUID.randomUUID();
-    this.username = username;
-    this.displayName = displayName != null ? displayName : username;
+    this.email = email != null ? email.trim().toLowerCase() : null;
+    this.username = null;
+    this.displayName = null;
     this.passwordHash = passwordHash;
+    this.emailVerified = false;
+    this.verificationCode = null;
+    this.verificationCodeExpiresAt = null;
     this.createdAt = Instant.now();
   }
 
@@ -44,6 +63,14 @@ public class User {
 
   public void setId(UUID id) {
     this.id = id;
+  }
+
+  public String getEmail() {
+    return email;
+  }
+
+  public void setEmail(String email) {
+    this.email = email;
   }
 
   public String getUsername() {
@@ -70,11 +97,43 @@ public class User {
     this.passwordHash = passwordHash;
   }
 
+  public boolean isEmailVerified() {
+    return emailVerified;
+  }
+
+  public void setEmailVerified(boolean emailVerified) {
+    this.emailVerified = emailVerified;
+  }
+
+  public String getVerificationCode() {
+    return verificationCode;
+  }
+
+  public void setVerificationCode(String verificationCode) {
+    this.verificationCode = verificationCode;
+  }
+
+  public Instant getVerificationCodeExpiresAt() {
+    return verificationCodeExpiresAt;
+  }
+
+  public void setVerificationCodeExpiresAt(Instant verificationCodeExpiresAt) {
+    this.verificationCodeExpiresAt = verificationCodeExpiresAt;
+  }
+
   public Instant getCreatedAt() {
     return createdAt;
   }
 
   public void setCreatedAt(Instant createdAt) {
     this.createdAt = createdAt;
+  }
+
+  /** Display name for lobby/game: game name if set, else email prefix. */
+  public String getEffectiveDisplayName() {
+    if (displayName != null && !displayName.isBlank()) return displayName;
+    if (username != null && !username.isBlank()) return username;
+    if (email != null && email.contains("@")) return email.substring(0, email.indexOf("@"));
+    return "Player";
   }
 }

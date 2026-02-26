@@ -1,7 +1,7 @@
 package com.kitten.player.dto;
 
-/** Login: email + password. */
-public class AuthRequest {
+/** Step 1 of registration: email + password only. */
+public class RegisterRequest {
   private String email;
   private String password;
 

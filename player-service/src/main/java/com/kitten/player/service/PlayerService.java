@@ -21,7 +21,7 @@ public class PlayerService {
     try {
       UUID uuid = UUID.fromString(id);
       return userRepository.findById(uuid)
-          .map(user -> new PlayerResponse(user.getId().toString(), user.getDisplayName()))
+          .map(user -> new PlayerResponse(user.getId().toString(), user.getEffectiveDisplayName()))
           .orElse(null);
     } catch (IllegalArgumentException e) {
       return null;

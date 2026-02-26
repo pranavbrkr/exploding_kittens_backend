@@ -29,7 +29,8 @@ public class SecurityConfig {
         .cors(cors -> {})
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/auth/**").permitAll()
+            .requestMatchers("/auth/register", "/auth/login", "/auth/verify-email").permitAll()
+            .requestMatchers("/auth/**").authenticated()
             .requestMatchers("/api/player/**").permitAll()
             .requestMatchers("/actuator/**", "/error").permitAll()
             .anyRequest().authenticated())
