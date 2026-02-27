@@ -2,6 +2,8 @@ package com.kitten.lobby.dto;
 
 import java.util.List;
 
+import com.kitten.player.dto.PlayerResponse;
+
 public class LobbyResponse {
   private String lobbyId;
   private List<PlayerResponse> players;

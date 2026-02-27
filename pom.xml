@@ -13,8 +13,7 @@
   <name>Exploding Kittens Backend</name>
 
   <modules>
-    <module>player-service</module>
-    <module>lobby-service</module>
+    <module>session-service</module>
     <module>game-service</module>
     <module>common</module>
   </modules>

@@ -31,7 +31,7 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
             .requestMatchers("/auth/register", "/auth/login", "/auth/verify-email", "/auth/guest").permitAll()
             .requestMatchers("/auth/**").authenticated()
-            .requestMatchers("/api/player/**").permitAll()
+            .requestMatchers("/api/player/**", "/api/lobby/**", "/ws/**").permitAll()
             .requestMatchers("/actuator/**", "/error").permitAll()
             .anyRequest().authenticated())
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

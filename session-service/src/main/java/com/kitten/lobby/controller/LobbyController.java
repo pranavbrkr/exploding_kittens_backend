@@ -13,13 +13,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.kitten.lobby.client.PlayerClient;
 import com.kitten.lobby.dto.LobbyCreateRequest;
 import com.kitten.lobby.dto.LobbyJoinRequest;
 import com.kitten.lobby.dto.LobbyResponse;
-import com.kitten.lobby.dto.PlayerResponse;
 import com.kitten.lobby.model.Lobby;
 import com.kitten.lobby.service.LobbyService;
+import com.kitten.player.dto.PlayerResponse;
+import com.kitten.player.service.PlayerService;
 
 @RestController
 @RequestMapping("/api/lobby")
@@ -29,7 +29,7 @@ public class LobbyController {
   private LobbyService lobbyService;
 
   @Autowired
-  private PlayerClient playerClient;
+  private PlayerService playerService;
 
   @GetMapping("/{lobbyId}")
   public LobbyResponse getLobby(@PathVariable("lobbyId") String lobbyId) {
@@ -40,7 +40,8 @@ public class LobbyController {
 
     List<String> safeCopy = List.copyOf(lobby.getPlayerIds());
     List<PlayerResponse> playerList = safeCopy.stream()
-      .map(playerClient::getPlayerDetails)
+      .map(playerId -> playerService.getPlayerById(playerId))
+      .filter(p -> p != null)
       .toList();
     return new LobbyResponse(lobby.getLobbyId(), playerList);
   }
@@ -49,16 +50,17 @@ public class LobbyController {
   public LobbyResponse createLobby(@RequestBody LobbyCreateRequest request) {
     String playerId = request.getPlayerId();
 
-    if(!playerClient.isValidPlayer(playerId)) {
+    if (playerService.getPlayerById(playerId) == null) {
       throw new RuntimeException("Invalid player ID");
     }
 
     Lobby lobby = lobbyService.createLobby(playerId);
     List<PlayerResponse> playerList = lobby.getPlayerIds().stream()
-      .map(playerClient::getPlayerDetails)
+      .map(playerService::getPlayerById)
+      .filter(p -> p != null)
       .toList();
 
-      return new LobbyResponse(lobby.getLobbyId(), playerList);
+    return new LobbyResponse(lobby.getLobbyId(), playerList);
   }
 
   @PostMapping("/join")
@@ -66,7 +68,7 @@ public class LobbyController {
     String playerId = request.getPlayerId();
     String lobbyId = request.getLobbyId();
 
-    if (!playerClient.isValidPlayer(playerId)) {
+    if (playerService.getPlayerById(playerId) == null) {
       throw new RuntimeException("Invalid player ID");
     }
 
@@ -82,9 +84,10 @@ public class LobbyController {
     Lobby updated = lobbyService.getLobbyById(lobbyId);
 
     List<PlayerResponse> playerList = updated.getPlayerIds().stream()
-      .map(playerClient::getPlayerDetails)
+      .map(playerService::getPlayerById)
+      .filter(p -> p != null)
       .toList();
 
-      return new LobbyResponse(updated.getLobbyId(), playerList);
+    return new LobbyResponse(updated.getLobbyId(), playerList);
   }
 }
