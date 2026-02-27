@@ -31,8 +31,8 @@ public class Game {
   @Column(name = "ended_at")
   private Instant endedAt;
 
-  @Column(name = "winner_user_id", columnDefinition = "uuid")
-  private UUID winnerUserId;
+  @Column(name = "winner_player_id", length = 64)
+  private String winnerPlayerId;
 
   @Column(name = "seed")
   private Long seed;
@@ -94,12 +94,12 @@ public class Game {
     this.endedAt = endedAt;
   }
 
-  public UUID getWinnerUserId() {
-    return winnerUserId;
+  public String getWinnerPlayerId() {
+    return winnerPlayerId;
   }
 
-  public void setWinnerUserId(UUID winnerUserId) {
-    this.winnerUserId = winnerUserId;
+  public void setWinnerPlayerId(String winnerPlayerId) {
+    this.winnerPlayerId = winnerPlayerId;
   }
 
   public Long getSeed() {

@@ -27,13 +27,28 @@ public class AuthService {
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
   private final EmailService emailService;
+  private final GuestStore guestStore;
 
   public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                     JwtService jwtService, EmailService emailService) {
+                     JwtService jwtService, EmailService emailService, GuestStore guestStore) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
     this.emailService = emailService;
+    this.guestStore = guestStore;
+  }
+
+  /** Create a guest session: no DB user, JWT with guest id and generated name. */
+  public AuthResponse createGuestSession() {
+    String guestId = "guest_" + java.util.UUID.randomUUID();
+    String name = "guest_" + (int) (Math.random() * 900_000 + 100_000); // 6-digit
+    guestStore.put(guestId, name);
+    String token = jwtService.createToken(guestId, name);
+    return new AuthResponse(token, guestId, name);
+  }
+
+  public String getGuestName(String guestId) {
+    return guestStore.get(guestId);
   }
 
   /** Step 1: Register with email + password. Sends verification code; no JWT yet. */

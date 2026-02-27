@@ -123,8 +123,8 @@ public class GameService {
       Game gameEntity = new Game(gameId, lobbyId);
       gameRepository.save(gameEntity);
       for (int i = 0; i < playerIds.size(); i++) {
-        UUID userId = UUID.fromString(playerIds.get(i));
-        gameParticipantRepository.save(new GameParticipant(gameId, userId, i));
+        String playerId = playerIds.get(i);
+        gameParticipantRepository.save(new GameParticipant(gameId, playerId, i));
       }
       return gameId;
     } catch (Exception e) {
@@ -143,13 +143,13 @@ public class GameService {
       if (game == null || game.getStatus() == Game.GameStatus.FINISHED) return;
       game.setStatus(Game.GameStatus.FINISHED);
       game.setEndedAt(java.time.Instant.now());
-      game.setWinnerUserId(UUID.fromString(winnerPlayerId));
+      game.setWinnerPlayerId(winnerPlayerId);
       gameRepository.save(game);
       List<GameParticipant> participants = gameParticipantRepository.findByGameIdOrderBySeatIndex(gameId);
       for (GameParticipant p : participants) {
-        if (p.getUserId().toString().equals(winnerPlayerId)) {
+        if (winnerPlayerId != null && winnerPlayerId.equals(p.getPlayerId())) {
           p.setResult("WIN");
-        } else if (eliminatedPlayerIds != null && eliminatedPlayerIds.contains(p.getUserId().toString())) {
+        } else if (eliminatedPlayerIds != null && eliminatedPlayerIds.contains(p.getPlayerId())) {
           p.setResult("ELIMINATED");
         } else {
           p.setResult("LOSS");

@@ -25,9 +25,14 @@ public class JwtService {
   }
 
   public String createToken(UUID userId, String username) {
+    return createToken(userId.toString(), username);
+  }
+
+  /** Create token with string subject (for guests: guest_&lt;uuid&gt;). */
+  public String createToken(String subject, String name) {
     return Jwts.builder()
-        .subject(userId.toString())
-        .claim("username", username)
+        .subject(subject)
+        .claim("username", name)
         .issuedAt(new Date())
         .expiration(new Date(System.currentTimeMillis() + properties.getExpirationMs()))
         .signWith(key)
@@ -43,7 +48,16 @@ public class JwtService {
   }
 
   public UUID getUserIdFromToken(String token) {
-    return UUID.fromString(parseToken(token).getSubject());
+    String sub = parseToken(token).getSubject();
+    if (sub.startsWith("guest_")) {
+      throw new IllegalArgumentException("Guest token has no UUID subject");
+    }
+    return UUID.fromString(sub);
+  }
+
+  /** Subject from token (UUID string for users, guest_&lt;uuid&gt; for guests). */
+  public String getSubject(String token) {
+    return parseToken(token).getSubject();
   }
 
   public boolean isValidToken(String token) {

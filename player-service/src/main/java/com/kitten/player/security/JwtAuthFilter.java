@@ -1,7 +1,6 @@
 package com.kitten.player.security;
 
 import java.util.Collections;
-import java.util.UUID;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -42,9 +41,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
       return;
     }
     try {
-      UUID userId = jwtService.getUserIdFromToken(token);
+      String subject = jwtService.getSubject(token);
       UsernamePasswordAuthenticationToken authentication =
-          new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
+          new UsernamePasswordAuthenticationToken(subject, null, Collections.emptyList());
       authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
       SecurityContextHolder.getContext().setAuthentication(authentication);
     } finally {

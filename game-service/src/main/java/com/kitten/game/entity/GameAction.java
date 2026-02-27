@@ -26,11 +26,11 @@ public class GameAction {
   @Column(name = "turn_number")
   private Integer turnNumber;
 
-  @Column(name = "actor_user_id", columnDefinition = "uuid")
-  private UUID actorUserId;
+  @Column(name = "actor_user_id", length = 64)
+  private String actorUserId;
 
-  @Column(name = "receiver_user_id", columnDefinition = "uuid")
-  private UUID receiverUserId;
+  @Column(name = "receiver_user_id", length = 64)
+  private String receiverUserId;
 
   @Column(name = "action_type", nullable = false)
   private String actionType;
@@ -83,19 +83,19 @@ public class GameAction {
     this.turnNumber = turnNumber;
   }
 
-  public UUID getActorUserId() {
+  public String getActorUserId() {
     return actorUserId;
   }
 
-  public void setActorUserId(UUID actorUserId) {
+  public void setActorUserId(String actorUserId) {
     this.actorUserId = actorUserId;
   }
 
-  public UUID getReceiverUserId() {
+  public String getReceiverUserId() {
     return receiverUserId;
   }
 
-  public void setReceiverUserId(UUID receiverUserId) {
+  public void setReceiverUserId(String receiverUserId) {
     this.receiverUserId = receiverUserId;
   }
 

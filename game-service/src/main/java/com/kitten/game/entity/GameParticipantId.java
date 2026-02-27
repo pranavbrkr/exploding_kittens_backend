@@ -7,13 +7,13 @@ import java.util.UUID;
 public class GameParticipantId implements Serializable {
 
   private UUID gameId;
-  private UUID userId;
+  private String playerId;
 
   public GameParticipantId() {}
 
-  public GameParticipantId(UUID gameId, UUID userId) {
+  public GameParticipantId(UUID gameId, String playerId) {
     this.gameId = gameId;
-    this.userId = userId;
+    this.playerId = playerId;
   }
 
   public UUID getGameId() {
@@ -24,12 +24,12 @@ public class GameParticipantId implements Serializable {
     this.gameId = gameId;
   }
 
-  public UUID getUserId() {
-    return userId;
+  public String getPlayerId() {
+    return playerId;
   }
 
-  public void setUserId(UUID userId) {
-    this.userId = userId;
+  public void setPlayerId(String playerId) {
+    this.playerId = playerId;
   }
 
   @Override
@@ -37,11 +37,11 @@ public class GameParticipantId implements Serializable {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     GameParticipantId that = (GameParticipantId) o;
-    return Objects.equals(gameId, that.gameId) && Objects.equals(userId, that.userId);
+    return Objects.equals(gameId, that.gameId) && Objects.equals(playerId, that.playerId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(gameId, userId);
+    return Objects.hash(gameId, playerId);
   }
 }

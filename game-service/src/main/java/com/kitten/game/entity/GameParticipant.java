@@ -23,8 +23,8 @@ public class GameParticipant {
   private UUID gameId;
 
   @Id
-  @Column(name = "user_id", columnDefinition = "uuid")
-  private UUID userId;
+  @Column(name = "player_id", length = 64)
+  private String playerId;
 
   @Column(name = "seat_index", nullable = false)
   private int seatIndex;
@@ -41,9 +41,9 @@ public class GameParticipant {
 
   public GameParticipant() {}
 
-  public GameParticipant(UUID gameId, UUID userId, int seatIndex) {
+  public GameParticipant(UUID gameId, String playerId, int seatIndex) {
     this.gameId = gameId;
-    this.userId = userId;
+    this.playerId = playerId;
     this.seatIndex = seatIndex;
     this.createdAt = Instant.now();
   }
@@ -56,12 +56,12 @@ public class GameParticipant {
     this.gameId = gameId;
   }
 
-  public UUID getUserId() {
-    return userId;
+  public String getPlayerId() {
+    return playerId;
   }
 
-  public void setUserId(UUID userId) {
-    this.userId = userId;
+  public void setPlayerId(String playerId) {
+    this.playerId = playerId;
   }
 
   public int getSeatIndex() {

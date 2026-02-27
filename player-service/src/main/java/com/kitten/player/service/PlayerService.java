@@ -12,12 +12,18 @@ import com.kitten.player.repository.UserRepository;
 public class PlayerService {
 
   private final UserRepository userRepository;
+  private final GuestStore guestStore;
 
-  public PlayerService(UserRepository userRepository) {
+  public PlayerService(UserRepository userRepository, GuestStore guestStore) {
     this.userRepository = userRepository;
+    this.guestStore = guestStore;
   }
 
   public PlayerResponse getPlayerById(String id) {
+    if (id != null && id.startsWith("guest_")) {
+      String name = guestStore.getOrDefault(id, "Guest");
+      return new PlayerResponse(id, name);
+    }
     try {
       UUID uuid = UUID.fromString(id);
       return userRepository.findById(uuid)
