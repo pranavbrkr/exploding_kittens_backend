@@ -132,6 +132,10 @@ public class GameController {
     if (!currentPlayer.getPlayerId().equals(playerId)) return ResponseEntity.status(403).build();
 
     CardType card = CardType.valueOf(cardType);
+    // DEFUSE and EXPLODING_KITTEN are only used by the system (on draw/steal), not playable by the player
+    if (card == CardType.DEFUSE || card == CardType.EXPLODING_KITTEN) {
+      return ResponseEntity.badRequest().build();
+    }
     if (!currentPlayer.getHand().remove(card)) return ResponseEntity.badRequest().build();
 
     game.getUsedCards().add(card);
